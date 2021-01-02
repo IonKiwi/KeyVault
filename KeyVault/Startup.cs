@@ -58,10 +58,6 @@ namespace KeyVault {
 					p.AddAuthenticationSchemes(NegotiateDefaults.AuthenticationScheme);
 					p.RequireAuthenticatedUser();
 				});
-				o.AddPolicy(JwtBearerDefaults.AuthenticationScheme, policy => {
-					policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme);
-					policy.RequireAuthenticatedUser();
-				});
 			});
 		}
 
@@ -79,7 +75,7 @@ namespace KeyVault {
 
 				endpoints.MapGet("/auth", async context => {
 
-					var claims = new[] { new Claim(ClaimTypes.NameIdentifier, context.User.Identity.Name) };
+					var claims = new[] { new Claim(ClaimTypes.Name, context.User.Identity.Name) };
 					var credentials = new SigningCredentials(SecurityKey, SecurityAlgorithms.EcdsaSha256);
 					var token = new JwtSecurityToken("KeyVault", "urn:target", claims, expires: DateTime.UtcNow.AddHours(2), signingCredentials: credentials);
 					await context.Response.WriteAsync(JwtTokenHandler.WriteToken(token));
@@ -87,7 +83,7 @@ namespace KeyVault {
 				}).RequireAuthorization("Windows");
 
 				endpoints.MapGet("/", async context => {
-					await context.Response.WriteAsync("Hello World!");
+					await context.Response.WriteAsync($"Hello {context.User.Identity.Name}!");
 				}).RequireAuthorization();
 			});
 		}
