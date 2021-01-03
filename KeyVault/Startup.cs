@@ -73,7 +73,7 @@ namespace KeyVault {
 
 			app.UseEndpoints(endpoints => {
 
-				endpoints.MapGet("/auth", async context => {
+				endpoints.MapGet("/auth/windows", async context => {
 
 					var claims = new[] { new Claim(ClaimTypes.Name, context.User.Identity.Name) };
 					var credentials = new SigningCredentials(SecurityKey, SecurityAlgorithms.EcdsaSha256);
