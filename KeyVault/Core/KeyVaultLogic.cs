@@ -78,10 +78,15 @@ namespace KeyVault.Core {
 		}
 
 		public string AuthenticateWindows(ClaimsPrincipal user) {
+			EnsureInitialized();
+
 			var claims = new[] { new Claim(ClaimTypes.Name, user.Identity.Name) };
-			var credentials = new SigningCredentials(GetSecurityKey(), SecurityAlgorithms.EcdsaSha256);
-			var token = new JwtSecurityToken("KeyVault", "urn:target", claims, expires: DateTime.UtcNow.AddHours(2), signingCredentials: credentials);
-			return GetJwtTokenHandler().WriteToken(token);
+			using (var key = GetECDsa()) {
+				var securityKey = new ECDsaSecurityKey(key);
+				var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha256);
+				var token = new JwtSecurityToken("KeyVault", "urn:target", claims, expires: DateTime.UtcNow.AddHours(2), signingCredentials: credentials);
+				return GetJwtTokenHandler().WriteToken(token);
+			}
 		}
 	}
 }
