@@ -60,7 +60,9 @@ namespace KeyVault {
 			global.Init();
 			services.AddSingleton<IFarmSettings>(global);
 
-			KeyVaultLogic.Initialize(global.KeyVault);
+			var keyVault = new KeyVaultLogic();
+			keyVault.Initialize(global.KeyVault);
+			services.AddSingleton<KeyVaultLogic>(keyVault);
 
 			services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 				.AddJwtBearer(options => {
@@ -71,7 +73,7 @@ namespace KeyVault {
 											ValidateIssuer = false,
 											ValidateActor = false,
 											ValidateLifetime = true,
-											IssuerSigningKey = KeyVaultLogic.Instance.GetSecurityKey()
+											IssuerSigningKey = keyVault.GetSecurityKey()
 										};
 
 					//options.Events = new JwtBearerEvents {

@@ -23,8 +23,8 @@ namespace KeyVault.Controllers {
 
 		[HttpGet]
 		[Authorize("Windows")]
-		public async ValueTask<IActionResult> Windows() {
-			var result = await KeyVaultLogic.Instance.AuthenticateWindows(HttpContext.User);
+		public async ValueTask<IActionResult> Windows([FromServices] KeyVaultLogic keyVault) {
+			var result = await keyVault.AuthenticateWindows(HttpContext.User);
 			if (!result.success) {
 				return Unauthorized();
 			}
@@ -32,7 +32,7 @@ namespace KeyVault.Controllers {
 		}
 
 		[HttpGet]
-		public async ValueTask<IActionResult> Basic() {
+		public async ValueTask<IActionResult> Basic([FromServices] KeyVaultLogic keyVault) {
 			string authorization = HttpContext.Request.Headers["Authorization"];
 			if (authorization != null && authorization.StartsWith("Basic ", StringComparison.Ordinal)) {
 				var credentials = Encoding.UTF8.GetString(Convert.FromBase64String(authorization.Substring(6)));
@@ -40,7 +40,7 @@ namespace KeyVault.Controllers {
 				if (x > 0) {
 					string user = credentials.Substring(0, x);
 					string password = credentials.Substring(x + 1);
-					var result = await KeyVaultLogic.Instance.AuthenticateBasic(user, password);
+					var result = await keyVault.AuthenticateBasic(user, password);
 					if (result.success) {
 						return new ObjectResult(result.token);
 					}

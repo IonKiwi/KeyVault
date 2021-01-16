@@ -17,47 +17,22 @@ using System.Threading.Tasks;
 namespace KeyVault.Core {
 	public sealed class KeyVaultLogic {
 
-		private readonly object _syncRoot = new object();
-		private bool _initialized;
 		private IKeyVaultDataProvider _data;
 		private IKeyVaultTokenKey _tokenKey;
 		private IKeyVaultEncryptionKey _encryptionKey;
 
-		private KeyVaultLogic() {
-
-		}
-
-		public static KeyVaultLogic Instance { get; } = new KeyVaultLogic();
-
-		public static void Initialize(IKeyVaultConfiguration configuration) {
-			Instance.InitializeInternal(configuration);
-		}
-
-		private void InitializeInternal(IKeyVaultConfiguration configuration) {
-			lock (_syncRoot) {
-				if (_initialized) {
-					throw new InvalidOperationException("Already initialized");
-				}
-				_initialized = true;
-				_tokenKey = configuration.TokenKey;
-				_encryptionKey = configuration.EncryptionKey;
-				if (string.Equals("Sqlite", configuration.DataProvider, StringComparison.OrdinalIgnoreCase)) {
-					_data = new SqliteKeyVaultDataProvider(configuration.DataProviderConnectionString);
-				}
-				else {
-					throw new InvalidOperationException($"Data provider '{configuration.DataProvider}' is not supported");
-				}
+		public void Initialize(IKeyVaultConfiguration configuration) {
+			_tokenKey = configuration.TokenKey;
+			_encryptionKey = configuration.EncryptionKey;
+			if (string.Equals("Sqlite", configuration.DataProvider, StringComparison.OrdinalIgnoreCase)) {
+				_data = new SqliteKeyVaultDataProvider(configuration.DataProviderConnectionString);
 			}
-		}
-
-		private void EnsureInitialized() {
-			if (!_initialized) {
-				throw new InvalidOperationException("KeyVaultLogic is not initialized");
+			else {
+				throw new InvalidOperationException($"Data provider '{configuration.DataProvider}' is not supported");
 			}
 		}
 
 		public async ValueTask<OperationResult<long>> AddUser(ClaimsPrincipal user, NewUser newUser) {
-			EnsureInitialized();
 
 			if (newUser == null) {
 				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "No data" };
@@ -74,7 +49,6 @@ namespace KeyVault.Core {
 		}
 
 		public async ValueTask<OperationResult<UserData>> GetUser(ClaimsPrincipal user, long userId) {
-			EnsureInitialized();
 
 			if (!(user.IsInRole("UserManagement") || user.IsInRole("Admin"))) {
 				return new OperationResult<UserData> { Unauthorized = true };
@@ -89,7 +63,6 @@ namespace KeyVault.Core {
 		}
 
 		public async ValueTask<OperationResult<string[]>> GetUserRoles(ClaimsPrincipal user, long userId) {
-			EnsureInitialized();
 
 			if (!(user.IsInRole("UserManagement") || user.IsInRole("Admin"))) {
 				return new OperationResult<string[]> { Unauthorized = true };
@@ -124,7 +97,6 @@ namespace KeyVault.Core {
 		}
 
 		public async ValueTask<(bool success, string token)> AuthenticateWindows(ClaimsPrincipal user) {
-			EnsureInitialized();
 
 			var credentials = await _data.GetUserCredential("Windows", user.Identity.Name).NoSync();
 			if (credentials == null) {
@@ -143,7 +115,6 @@ namespace KeyVault.Core {
 		}
 
 		public async ValueTask<(bool success, string token)> AuthenticateBasic(string user, string password) {
-			EnsureInitialized();
 
 			var credentials = await _data.GetUserCredential("Basic", user).NoSync();
 			if (credentials.HasValue) {

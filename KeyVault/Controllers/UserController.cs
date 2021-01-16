@@ -21,18 +21,18 @@ namespace KeyVault.Controllers {
 		}
 
 		[HttpGet("{userId:long}")]
-		public ValueTask<OperationResult<UserData>> Get(long userId) {
-			return KeyVaultLogic.Instance.GetUser(HttpContext.User, userId);
+		public ValueTask<OperationResult<UserData>> Get([FromServices] KeyVaultLogic keyVault, long userId) {
+			return keyVault.GetUser(HttpContext.User, userId);
 		}
 
 		[HttpPost]
-		public ValueTask<OperationResult<long>> Post(NewUser newUser) {
-			return KeyVaultLogic.Instance.AddUser(HttpContext.User, newUser);
+		public ValueTask<OperationResult<long>> Post([FromServices] KeyVaultLogic keyVault, NewUser newUser) {
+			return keyVault.AddUser(HttpContext.User, newUser);
 		}
 
 		[HttpGet("{userId:long}/role")]
-		public ValueTask<OperationResult<string[]>> Roles(long userId) {
-			return KeyVaultLogic.Instance.GetUserRoles(HttpContext.User, userId);
+		public ValueTask<OperationResult<string[]>> Roles([FromServices] KeyVaultLogic keyVault, long userId) {
+			return keyVault.GetUserRoles(HttpContext.User, userId);
 		}
 	}
 }
