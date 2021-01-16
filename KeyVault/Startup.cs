@@ -103,7 +103,12 @@ namespace KeyVault {
 			app.UseEndpoints(endpoints => {
 
 				endpoints.MapGet("/auth/windows", async context => {
-					await context.Response.WriteAsync(KeyVaultLogic.Instance.AuthenticateWindows(context.User));
+					var result = KeyVaultLogic.Instance.AuthenticateWindows(context.User);
+					if (!result.success) {
+						context.Response.StatusCode = 403;
+						return;
+					}
+					await context.Response.WriteAsync(result.token);
 				}).RequireAuthorization("Windows");
 
 				endpoints.MapGet("/", async context => {
