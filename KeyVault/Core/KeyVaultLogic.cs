@@ -88,6 +88,21 @@ namespace KeyVault.Core {
 			return new OperationResult<UserData> { Result = new UserData { Name = userInfo.Name, UserId = userInfo.Id } };
 		}
 
+		public async ValueTask<OperationResult<string[]>> GetUserRoles(ClaimsPrincipal user, long userId) {
+			EnsureInitialized();
+
+			if (!(user.IsInRole("UserManagement") || user.IsInRole("Admin"))) {
+				return new OperationResult<string[]> { Unauthorized = true };
+			}
+
+			var userInfo = await _data.GetUserInformation(userId).NoSync();
+			if (userInfo == null) {
+				return new OperationResult<string[]> { NotFound = true };
+			}
+
+			return new OperationResult<string[]> { Result = userInfo.Roles.ToArray() };
+		}
+
 		public AsymmetricSecurityKey GetSecurityKey() {
 			return new ECDsaSecurityKey(GetECDsa());
 		}

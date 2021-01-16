@@ -135,14 +135,19 @@ namespace KeyVault {
 					context.Response.Headers["WWW-Authenticate"] = "Basic realm=\"KeyVault basic authentication\", charset=\"UTF-8\"";
 				});
 
-				endpoints.MapPost("/users", async context => {
+				endpoints.MapPost("/user", async context => {
 					var user = await JsonSerializer.DeserializeAsync<NewUser>(context.Request.Body);
 					var result = await KeyVaultLogic.Instance.AddUser(context.User, user);
 					await WriteOperationResponse(context, result);
 				});
 
-				endpoints.MapGet("/users/{userId:long}", async context => {
+				endpoints.MapGet("/user/{userId:long}", async context => {
 					var result = await KeyVaultLogic.Instance.GetUser(context.User, long.Parse((string)context.Request.RouteValues["userId"], NumberStyles.None, CultureInfo.InvariantCulture));
+					await WriteOperationResponse(context, result);
+				});
+
+				endpoints.MapGet("/user/{userId:long}/role", async context => {
+					var result = await KeyVaultLogic.Instance.GetUserRoles(context.User, long.Parse((string)context.Request.RouteValues["userId"], NumberStyles.None, CultureInfo.InvariantCulture));
 					await WriteOperationResponse(context, result);
 				});
 
