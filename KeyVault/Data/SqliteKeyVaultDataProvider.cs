@@ -60,7 +60,10 @@ namespace KeyVault.Data {
 						}
 
 						long userId = reader.GetInt64(0);
-						string value = reader.GetString(1);
+						string value = null;
+						if (!await reader.IsDBNullAsync(1)) {
+							value = reader.GetString(1);
+						}
 						return (userId, value);
 					}
 				}

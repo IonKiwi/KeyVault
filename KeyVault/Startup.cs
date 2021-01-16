@@ -11,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -91,11 +92,18 @@ namespace KeyVault {
 					p.RequireAuthenticatedUser();
 				});
 			});
+
+			services.AddControllers();
+			services.AddSwaggerGen(c => {
+				c.SwaggerDoc("v1", new OpenApiInfo { Title = "KeyVault", Version = "v1" });
+			});
 		}
 
 		public void Configure(IApplicationBuilder app, IWebHostEnvironment env) {
 			if (env.IsDevelopment()) {
 				app.UseDeveloperExceptionPage();
+				app.UseSwagger();
+				app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "KeyVault v1"));
 			}
 
 			app.UseRouting();
@@ -104,77 +112,8 @@ namespace KeyVault {
 			app.UseAuthorization();
 
 			app.UseEndpoints(endpoints => {
-
-				endpoints.MapGet("/auth/windows", async context => {
-					var result = await KeyVaultLogic.Instance.AuthenticateWindows(context.User);
-					if (!result.success) {
-						context.Response.StatusCode = 403;
-						return;
-					}
-					await context.Response.WriteAsync(result.token);
-				}).RequireAuthorization("Windows");
-
-				endpoints.MapGet("/auth/basic", async context => {
-
-					string authorization = context.Request.Headers["Authorization"];
-					if (authorization != null && authorization.StartsWith("Basic ", StringComparison.Ordinal)) {
-						var credentials = Encoding.UTF8.GetString(Convert.FromBase64String(authorization.Substring(6)));
-						int x = credentials.IndexOf(':');
-						if (x > 0) {
-							string user = credentials.Substring(0, x);
-							string password = credentials.Substring(x + 1);
-							var result = await KeyVaultLogic.Instance.AuthenticateBasic(user, password);
-							if (result.success) {
-								await context.Response.WriteAsync(result.token);
-								return;
-							}
-						}
-					}
-
-					context.Response.StatusCode = 401;
-					context.Response.Headers["WWW-Authenticate"] = "Basic realm=\"KeyVault basic authentication\", charset=\"UTF-8\"";
-				});
-
-				endpoints.MapPost("/user", async context => {
-					var user = await JsonSerializer.DeserializeAsync<NewUser>(context.Request.Body);
-					var result = await KeyVaultLogic.Instance.AddUser(context.User, user);
-					await WriteOperationResponse(context, result);
-				});
-
-				endpoints.MapGet("/user/{userId:long}", async context => {
-					var result = await KeyVaultLogic.Instance.GetUser(context.User, long.Parse((string)context.Request.RouteValues["userId"], NumberStyles.None, CultureInfo.InvariantCulture));
-					await WriteOperationResponse(context, result);
-				});
-
-				endpoints.MapGet("/user/{userId:long}/role", async context => {
-					var result = await KeyVaultLogic.Instance.GetUserRoles(context.User, long.Parse((string)context.Request.RouteValues["userId"], NumberStyles.None, CultureInfo.InvariantCulture));
-					await WriteOperationResponse(context, result);
-				});
-
-				endpoints.MapGet("/", async context => {
-					await context.Response.WriteAsync($"Hello {context.User.Identity.Name}!");
-				}).RequireAuthorization();
+				endpoints.MapControllers();
 			});
-		}
-
-		private static async Task WriteOperationResponse<T>(HttpContext context, OperationResult<T> result) {
-			if (result.Unauthorized) {
-				context.Response.StatusCode = 401;
-				await context.Response.WriteAsJsonAsync(new { status = "Unauthorized" });
-				return;
-			}
-			else if (result.NotFound) {
-				context.Response.StatusCode = 404;
-				await context.Response.WriteAsJsonAsync(new { status = "NotFound" });
-				return;
-			}
-			else if (result.ValidationFailed) {
-				context.Response.StatusCode = 400;
-				await context.Response.WriteAsJsonAsync(new { status = "ValidationFailed", validationMessage = result.ValidationMessage });
-				return;
-			}
-
-			await context.Response.WriteAsJsonAsync(new { status = "Completed", result = result.Result });
 		}
 	}
 }
