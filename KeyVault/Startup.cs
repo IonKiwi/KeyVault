@@ -103,12 +103,7 @@ namespace KeyVault {
 			app.UseEndpoints(endpoints => {
 
 				endpoints.MapGet("/auth/windows", async context => {
-
-					var claims = new[] { new Claim(ClaimTypes.Name, context.User.Identity.Name) };
-					var credentials = new SigningCredentials(KeyVaultLogic.Instance.GetSecurityKey(), SecurityAlgorithms.EcdsaSha256);
-					var token = new JwtSecurityToken("KeyVault", "urn:target", claims, expires: DateTime.UtcNow.AddHours(2), signingCredentials: credentials);
-					await context.Response.WriteAsync(KeyVaultLogic.Instance.GetJwtTokenHandler().WriteToken(token));
-
+					await context.Response.WriteAsync(KeyVaultLogic.Instance.AuthenticateWindows(context.User));
 				}).RequireAuthorization("Windows");
 
 				endpoints.MapGet("/", async context => {

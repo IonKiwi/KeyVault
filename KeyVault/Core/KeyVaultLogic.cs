@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 
@@ -74,6 +75,13 @@ namespace KeyVault.Core {
 			var aes = Aes.Create();
 			aes.Key = _encryptionKey;
 			return aes;
+		}
+
+		public string AuthenticateWindows(ClaimsPrincipal user) {
+			var claims = new[] { new Claim(ClaimTypes.Name, user.Identity.Name) };
+			var credentials = new SigningCredentials(GetSecurityKey(), SecurityAlgorithms.EcdsaSha256);
+			var token = new JwtSecurityToken("KeyVault", "urn:target", claims, expires: DateTime.UtcNow.AddHours(2), signingCredentials: credentials);
+			return GetJwtTokenHandler().WriteToken(token);
 		}
 	}
 }
