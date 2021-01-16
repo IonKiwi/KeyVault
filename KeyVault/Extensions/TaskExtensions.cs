@@ -21,5 +21,13 @@ namespace KeyVault.Extensions {
 		public static ConfiguredValueTaskAwaitable<T> NoSync<T>(this ValueTask<T> task) {
 			return task.ConfigureAwait(false);
 		}
+
+		public static ConfiguredAsyncDisposable NoSync(this IAsyncDisposable task) {
+			return task.ConfigureAwait(false);
+		}
+
+		public static ConfiguredCancelableAsyncEnumerable<T> NoSync<T>(this IAsyncEnumerable<T> task) {
+			return task.ConfigureAwait(false);
+		}
 	}
 }

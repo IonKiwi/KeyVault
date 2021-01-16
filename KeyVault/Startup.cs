@@ -1,5 +1,6 @@
 using KeyVault.Config;
 using KeyVault.Core;
+using KeyVault.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.Negotiate;
 using Microsoft.AspNetCore.Builder;
@@ -103,7 +104,7 @@ namespace KeyVault {
 			app.UseEndpoints(endpoints => {
 
 				endpoints.MapGet("/auth/windows", async context => {
-					var result = KeyVaultLogic.Instance.AuthenticateWindows(context.User);
+					var result = await KeyVaultLogic.Instance.AuthenticateWindows(context.User);
 					if (!result.success) {
 						context.Response.StatusCode = 403;
 						return;

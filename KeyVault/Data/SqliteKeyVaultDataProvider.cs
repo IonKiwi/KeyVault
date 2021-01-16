@@ -40,6 +40,62 @@ namespace KeyVault.Data {
 
 				// INSERT INTO [User] ([Name]) Values ('admin')
 				// INSERT INTO [UserCredential] ([UserId], [Type], [Value]) VALUES (1, 'BasicPlainText', 'admin')
+				// INSERT INTO [UserCredential] ([UserId], [Type], [Value]) VALUES (1, 'Windows', 'domain\user')
+			}
+		}
+
+		public async ValueTask<UserInformation> AuthenticateUser(string type, string value) {
+
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				using (var cmd = new SqliteCommand("SELECT [UserId] FROM [UserCredential] WHERE [Type] = @type AND [Value] = @value;", conn)) {
+					cmd.Parameters.AddWithValue("@type", type);
+					cmd.Parameters.AddWithValue("@value", value);
+					object result = await cmd.ExecuteScalarAsync().NoSync();
+					if (result is not long userId) {
+						return null;
+					}
+
+					return await GetUserInformation(userId).NoSync();
+				}
+			}
+		}
+
+		public async ValueTask<UserInformation> GetUserInformation(long userId) {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				string name;
+				using (var cmd = new SqliteCommand("SELECT [Name] FROM [User] WHERE [Id] = @userId;", conn)) {
+					cmd.Parameters.AddWithValue("@userId", userId);
+
+					var reader = await cmd.ExecuteReaderAsync().NoSync();
+					await using (reader.NoSync()) {
+
+						if (!await reader.ReadAsync().NoSync()) {
+							return null;
+						}
+
+						name = reader.GetString(0);
+					}
+				}
+
+				var roles = new HashSet<string>();
+				using (var cmd = new SqliteCommand("SELECT [Role] FROM [UserRole] WHERE [UserId] = @userId;", conn)) {
+					cmd.Parameters.AddWithValue("@userId", userId);
+
+					var reader = await cmd.ExecuteReaderAsync().NoSync();
+					await using (reader.NoSync()) {
+
+						while (await reader.ReadAsync().NoSync()) {
+							var role = reader.GetString(0);
+							roles.Add(role);
+						}
+					}
+				}
+
+				return new UserInformation(userId, name, roles);
 			}
 		}
 	}

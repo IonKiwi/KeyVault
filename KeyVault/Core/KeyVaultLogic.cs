@@ -77,10 +77,20 @@ namespace KeyVault.Core {
 			return aes;
 		}
 
-		public (bool success, string token) AuthenticateWindows(ClaimsPrincipal user) {
+		public async ValueTask<(bool success, string token)> AuthenticateWindows(ClaimsPrincipal user) {
 			EnsureInitialized();
 
-			var claims = new[] { new Claim(ClaimTypes.Name, user.Identity.Name) };
+			var userInfo = await _data.AuthenticateUser("Windows", user.Identity.Name);
+			if (userInfo == null) {
+				return (false, null);
+			}
+
+			List<Claim> claims = new List<Claim>();
+			claims.Add(new Claim(ClaimTypes.Name, userInfo.Name));
+			foreach (var role in userInfo.Roles) {
+				claims.Add(new Claim(ClaimTypes.Role, role));
+			}
+
 			using (var key = GetECDsa()) {
 				var securityKey = new ECDsaSecurityKey(key);
 				var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha256);
