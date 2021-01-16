@@ -142,13 +142,19 @@ namespace KeyVault {
 						return;
 					}
 
-					var userId = await KeyVaultLogic.Instance.AddUser(user);
-					if (userId == null) {
+					var result = await KeyVaultLogic.Instance.AddUser(context.User, user);
+					if (result.Unauthorized) {
+						context.Response.StatusCode = 401;
+						await context.Response.WriteAsJsonAsync(new { status = "Unauthorized" });
+						return;
+					}
+					else if (result.ValidationFailed) {
 						context.Response.StatusCode = 400;
+						await context.Response.WriteAsJsonAsync(new { status = "ValidationFailed", validationMessage = result.ValidationMessage });
 						return;
 					}
 
-					await context.Response.WriteAsJsonAsync(new { userId = userId });
+					await context.Response.WriteAsJsonAsync(new { status = "Completed", userId = result.Result });
 				});
 
 				endpoints.MapGet("/", async context => {

@@ -56,14 +56,19 @@ namespace KeyVault.Core {
 			}
 		}
 
-		public async ValueTask<long?> AddUser(NewUser user) {
+		public async ValueTask<OperationResult<long>> AddUser(ClaimsPrincipal user, NewUser newUser) {
 			EnsureInitialized();
 
-			if (string.IsNullOrEmpty(user.Name)) {
-				return null;
+			if (!(user.IsInRole("UserManagement") || user.IsInRole("Admin"))) {
+				return new OperationResult<long> { Unauthorized = true };
 			}
 
-			return await _data.AddUser(user).NoSync();
+			if (string.IsNullOrEmpty(newUser.Name)) {
+				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "[Name] is required" };
+			}
+
+			var userId = await _data.AddUser(newUser).NoSync();
+			return new OperationResult<long> { Result = userId };
 		}
 
 		public AsymmetricSecurityKey GetSecurityKey() {
