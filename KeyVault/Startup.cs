@@ -13,6 +13,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Linq;
@@ -137,30 +138,39 @@ namespace KeyVault {
 
 				endpoints.MapPost("/users", async context => {
 					var user = await JsonSerializer.DeserializeAsync<NewUser>(context.Request.Body);
-					if (user == null) {
-						context.Response.StatusCode = 404;
-						return;
-					}
-
 					var result = await KeyVaultLogic.Instance.AddUser(context.User, user);
-					if (result.Unauthorized) {
-						context.Response.StatusCode = 401;
-						await context.Response.WriteAsJsonAsync(new { status = "Unauthorized" });
-						return;
-					}
-					else if (result.ValidationFailed) {
-						context.Response.StatusCode = 400;
-						await context.Response.WriteAsJsonAsync(new { status = "ValidationFailed", validationMessage = result.ValidationMessage });
-						return;
-					}
+					await WriteOperationResponse(context, result);
+				});
 
-					await context.Response.WriteAsJsonAsync(new { status = "Completed", userId = result.Result });
+				endpoints.MapGet("/users/{userId:long}", async context => {
+					var result = await KeyVaultLogic.Instance.GetUser(context.User, long.Parse((string)context.Request.RouteValues["userId"], NumberStyles.None, CultureInfo.InvariantCulture));
+					await WriteOperationResponse(context, result);
 				});
 
 				endpoints.MapGet("/", async context => {
 					await context.Response.WriteAsync($"Hello {context.User.Identity.Name}!");
 				}).RequireAuthorization();
 			});
+		}
+
+		private static async Task WriteOperationResponse<T>(HttpContext context, OperationResult<T> result) {
+			if (result.Unauthorized) {
+				context.Response.StatusCode = 401;
+				await context.Response.WriteAsJsonAsync(new { status = "Unauthorized" });
+				return;
+			}
+			else if (result.NotFound) {
+				context.Response.StatusCode = 404;
+				await context.Response.WriteAsJsonAsync(new { status = "NotFound" });
+				return;
+			}
+			else if (result.ValidationFailed) {
+				context.Response.StatusCode = 400;
+				await context.Response.WriteAsJsonAsync(new { status = "ValidationFailed", validationMessage = result.ValidationMessage });
+				return;
+			}
+
+			await context.Response.WriteAsJsonAsync(new { status = "Completed", result = result.Result });
 		}
 	}
 }

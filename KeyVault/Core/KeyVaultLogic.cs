@@ -59,16 +59,33 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<long>> AddUser(ClaimsPrincipal user, NewUser newUser) {
 			EnsureInitialized();
 
-			if (!(user.IsInRole("UserManagement") || user.IsInRole("Admin"))) {
+			if (newUser == null) {
+				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "No data" };
+			}
+			else if (!(user.IsInRole("UserManagement") || user.IsInRole("Admin"))) {
 				return new OperationResult<long> { Unauthorized = true };
 			}
-
-			if (string.IsNullOrEmpty(newUser.Name)) {
+			else if (string.IsNullOrEmpty(newUser.Name)) {
 				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "[Name] is required" };
 			}
 
 			var userId = await _data.AddUser(newUser).NoSync();
 			return new OperationResult<long> { Result = userId };
+		}
+
+		public async ValueTask<OperationResult<UserData>> GetUser(ClaimsPrincipal user, long userId) {
+			EnsureInitialized();
+
+			if (!(user.IsInRole("UserManagement") || user.IsInRole("Admin"))) {
+				return new OperationResult<UserData> { Unauthorized = true };
+			}
+
+			var userInfo = await _data.GetUserInformation(userId).NoSync();
+			if (userInfo == null) {
+				return new OperationResult<UserData> { NotFound = true };
+			}
+
+			return new OperationResult<UserData> { Result = new UserData { Name = userInfo.Name, UserId = userInfo.Id } };
 		}
 
 		public AsymmetricSecurityKey GetSecurityKey() {
