@@ -117,7 +117,6 @@ namespace KeyVault {
 				endpoints.MapGet("/auth/basic", async context => {
 
 					string authorization = context.Request.Headers["Authorization"];
-					string offline_token = context.Request.Query["offline_token"];
 					if (authorization != null && authorization.StartsWith("Basic ", StringComparison.Ordinal)) {
 						var credentials = Encoding.UTF8.GetString(Convert.FromBase64String(authorization.Substring(6)));
 						int x = credentials.IndexOf(':');
