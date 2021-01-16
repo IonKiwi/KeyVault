@@ -10,7 +10,7 @@ namespace KeyVault.Config {
 		IServerCertificateSettings Config { get; }
 	}
 
-	public class ServerBinding : IServerBinding {
+	public sealed class ServerBinding : IServerBinding {
 		[JsonPropertyName("port")]
 		public int Port { get; set; }
 

@@ -8,6 +8,6 @@ namespace KeyVault.Data {
 		ValueTask Create();
 
 		ValueTask<UserInformation> GetUserInformation(long userId);
-		ValueTask<UserInformation> AuthenticateUser(string type, string value);
+		ValueTask<(long usserId, string value)?> GetUserCredential(string type, string identifier);
 	}
 }

@@ -112,6 +112,28 @@ namespace KeyVault {
 					await context.Response.WriteAsync(result.token);
 				}).RequireAuthorization("Windows");
 
+				endpoints.MapGet("/auth/basic", async context => {
+
+					string authorization = context.Request.Headers["Authorization"];
+					string offline_token = context.Request.Query["offline_token"];
+					if (authorization != null && authorization.StartsWith("Basic ", StringComparison.Ordinal)) {
+						var credentials = Encoding.UTF8.GetString(Convert.FromBase64String(authorization.Substring(6)));
+						int x = credentials.IndexOf(':');
+						if (x > 0) {
+							string user = credentials.Substring(0, x);
+							string password = credentials.Substring(x + 1);
+							var result = await KeyVaultLogic.Instance.AuthenticateBasic(user, password);
+							if (result.success) {
+								await context.Response.WriteAsync(result.token);
+								return;
+							}
+						}
+					}
+
+					context.Response.StatusCode = 401;
+					context.Response.Headers["WWW-Authenticate"] = "Basic realm=\"KeyVault basic authentication\", charset=\"UTF-8\"";
+				});
+
 				endpoints.MapGet("/", async context => {
 					await context.Response.WriteAsync($"Hello {context.User.Identity.Name}!");
 				}).RequireAuthorization();

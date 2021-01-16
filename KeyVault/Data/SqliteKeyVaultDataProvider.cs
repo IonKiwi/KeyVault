@@ -26,7 +26,7 @@ namespace KeyVault.Data {
 					await cmd.ExecuteNonQueryAsync().NoSync();
 				}
 
-				using (var cmd = new SqliteCommand("CREATE TABLE [UserCredential] ([Id] INTEGER PRIMARY KEY AUTOINCREMENT, [UserId] INTEGER NOT NULL, [Type] TEXT NOT NULL, [Value] TEXT NOT NULL, FOREIGN KEY (UserId) REFERENCES [User](Id) ON DELETE CASCADE ON UPDATE CASCADE);", conn)) {
+				using (var cmd = new SqliteCommand("CREATE TABLE [UserCredential] ([Id] INTEGER PRIMARY KEY AUTOINCREMENT, [UserId] INTEGER NOT NULL, [Type] TEXT NOT NULL, [Identifier] TEXT NOT NULL, [Value] TEXT NULL, FOREIGN KEY (UserId) REFERENCES [User](Id) ON DELETE CASCADE ON UPDATE CASCADE, UNIQUE([Type], [Identifier]) ON CONFLICT FAIL);", conn)) {
 					await cmd.ExecuteNonQueryAsync().NoSync();
 				}
 
@@ -39,25 +39,29 @@ namespace KeyVault.Data {
 				}
 
 				// INSERT INTO [User] ([Name]) Values ('admin')
-				// INSERT INTO [UserCredential] ([UserId], [Type], [Value]) VALUES (1, 'BasicPlainText', 'admin')
-				// INSERT INTO [UserCredential] ([UserId], [Type], [Value]) VALUES (1, 'Windows', 'domain\user')
+				// INSERT INTO [UserCredential] ([UserId], [Type], [Identifier], [Value]) VALUES (1, 'BasicPlainText', 'admin', 'admin')
+				// INSERT INTO [UserCredential] ([UserId], [Type], [Identifier]) VALUES (1, 'Windows', 'domain\user')
 			}
 		}
 
-		public async ValueTask<UserInformation> AuthenticateUser(string type, string value) {
+		public async ValueTask<(long usserId, string value)?> GetUserCredential(string type, string identifier) {
 
 			using (var conn = new SqliteConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();
 
-				using (var cmd = new SqliteCommand("SELECT [UserId] FROM [UserCredential] WHERE [Type] = @type AND [Value] = @value;", conn)) {
+				using (var cmd = new SqliteCommand("SELECT [UserId], [Value] FROM [UserCredential] WHERE [Type] = @type AND [Identifier] = @identifier;", conn)) {
 					cmd.Parameters.AddWithValue("@type", type);
-					cmd.Parameters.AddWithValue("@value", value);
-					object result = await cmd.ExecuteScalarAsync().NoSync();
-					if (result is not long userId) {
-						return null;
-					}
+					cmd.Parameters.AddWithValue("@identifier", identifier);
+					var reader = await cmd.ExecuteReaderAsync().NoSync();
+					await using (reader.NoSync()) {
+						if (!await reader.ReadAsync().NoSync()) {
+							return null;
+						}
 
-					return await GetUserInformation(userId).NoSync();
+						long userId = reader.GetInt64(0);
+						string value = reader.GetString(1);
+						return (userId, value);
+					}
 				}
 			}
 		}

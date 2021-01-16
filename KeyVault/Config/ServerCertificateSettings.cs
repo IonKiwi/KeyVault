@@ -15,7 +15,7 @@ namespace KeyVault.Config {
 		string ServerCertificatePassword { get; }
 	}
 
-	public class ServerCertificateSettings : IServerCertificateSettings {
+	public sealed class ServerCertificateSettings : IServerCertificateSettings {
 		[JsonPropertyName("serverCertificateProvider")]
 		public string ServerCertificateProvider { get; set; }
 

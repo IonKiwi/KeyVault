@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace KeyVault.Config {
-	public class GlobalConfig : IFarmSettings {
+	public sealed class GlobalConfig : IFarmSettings {
 		[JsonPropertyName("serverBindings")]
 		public List<ServerBinding> ServerBindings {
 			get;

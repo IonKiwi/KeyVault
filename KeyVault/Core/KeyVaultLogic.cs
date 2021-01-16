@@ -1,5 +1,7 @@
 ﻿using KeyVault.Config;
 using KeyVault.Data;
+using KeyVault.Extensions;
+using KeyVault.Utilities;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
@@ -7,6 +9,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace KeyVault.Core {
@@ -15,8 +20,8 @@ namespace KeyVault.Core {
 		private readonly object _syncRoot = new object();
 		private bool _initialized;
 		private IKeyVaultDataProvider _data;
-		private byte[] _tokenKey;
-		private byte[] _encryptionKey;
+		private IKeyVaultTokenKey _tokenKey;
+		private IKeyVaultEncryptionKey _encryptionKey;
 
 		private KeyVaultLogic() {
 
@@ -67,20 +72,59 @@ namespace KeyVault.Core {
 
 		private ECDsa GetECDsa() {
 			var ecdsa = ECDsa.Create();
-			ecdsa.ImportPkcs8PrivateKey(_tokenKey, out _);
+			ecdsa.ImportPkcs8PrivateKey(_tokenKey.Key, out _);
 			return ecdsa;
 		}
 
 		private Aes GetAes() {
 			var aes = Aes.Create();
-			aes.Key = _encryptionKey;
+			aes.Key = _encryptionKey.Key;
 			return aes;
 		}
 
 		public async ValueTask<(bool success, string token)> AuthenticateWindows(ClaimsPrincipal user) {
 			EnsureInitialized();
 
-			var userInfo = await _data.AuthenticateUser("Windows", user.Identity.Name);
+			var credentials = await _data.GetUserCredential("Windows", user.Identity.Name).NoSync();
+			if (credentials == null) {
+				return (false, null);
+			}
+
+			var userInfo = await _data.GetUserInformation(credentials.Value.usserId).NoSync();
+
+			List<Claim> claims = new List<Claim>();
+			claims.Add(new Claim(ClaimTypes.Name, userInfo.Name));
+			foreach (var role in userInfo.Roles) {
+				claims.Add(new Claim(ClaimTypes.Role, role));
+			}
+
+			return (true, GetTokenForUser(claims));
+		}
+
+		public async ValueTask<(bool success, string token)> AuthenticateBasic(string user, string password) {
+			EnsureInitialized();
+
+			var credentials = await _data.GetUserCredential("Basic", user).NoSync();
+			if (credentials.HasValue) {
+				var basicCredential = JsonSerializer.Deserialize<BasicCredential>(credentials.Value.value);
+				byte[] passwordData = basicCredential.Salt.Concat(Encoding.UTF8.GetBytes(password)).ToArray();
+				byte[] passwordHash;
+				using (var sha256 = SHA256.Create()) {
+					passwordHash = sha256.ComputeHash(passwordData);
+				}
+
+				if (CommonUtility.AreByteArraysEqual(passwordHash, basicCredential.Password)) {
+					return (false, null);
+				}
+			}
+			else {
+				credentials = await _data.GetUserCredential("BasicPlainText", user).NoSync();
+				if (!credentials.HasValue || !string.Equals(password, credentials.Value.value, StringComparison.Ordinal)) {
+					return (false, null);
+				}
+			}
+
+			var userInfo = await _data.GetUserInformation(credentials.Value.usserId).NoSync();
 			if (userInfo == null) {
 				return (false, null);
 			}
@@ -91,12 +135,23 @@ namespace KeyVault.Core {
 				claims.Add(new Claim(ClaimTypes.Role, role));
 			}
 
+			return (true, GetTokenForUser(claims));
+		}
+
+		private string GetTokenForUser(List<Claim> claims) {
 			using (var key = GetECDsa()) {
 				var securityKey = new ECDsaSecurityKey(key);
-				var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha256);
-				var token = new JwtSecurityToken("KeyVault", "urn:target", claims, expires: DateTime.UtcNow.AddHours(2), signingCredentials: credentials);
-				return (true, GetJwtTokenHandler().WriteToken(token));
+				var tokenCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha256);
+				var token = new JwtSecurityToken("KeyVault", "urn:target", claims, expires: DateTime.UtcNow.AddHours(2), signingCredentials: tokenCredentials);
+				return GetJwtTokenHandler().WriteToken(token);
 			}
+		}
+
+		private sealed class BasicCredential {
+			[JsonPropertyName("s")]
+			public byte[] Salt { get; set; }
+			[JsonPropertyName("p")]
+			public byte[] Password { get; set; }
 		}
 	}
 }
