@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 namespace KeyVault.Core {
 	public static class KeyVaultRoles {
 		public const string Admin = "Admin";
-		public const string ReadSecret = "ReadSecret";
-		public const string WriteSecret = "WriteSecret";
+		//public const string ReadSecret = "ReadSecret";
+		//public const string WriteSecret = "WriteSecret";
 		public const string ListSecret = "ListSecret";
 		public const string DeleteSecret = "DeleteSecret";
 		public const string AssignUser = "AssignUser";
