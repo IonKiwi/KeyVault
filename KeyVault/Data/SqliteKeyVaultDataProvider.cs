@@ -102,5 +102,16 @@ namespace KeyVault.Data {
 				return new UserInformation(userId, name, roles);
 			}
 		}
+
+		public async ValueTask<long> AddUser(NewUser user) {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				using (var cmd = new SqliteCommand("INSERT INTO [User] ([Name]) Values (@name); SELECT last_insert_rowid();", conn)) {
+					cmd.Parameters.AddWithValue("@name", user.Name);
+					return (long)await cmd.ExecuteScalarAsync().NoSync();
+				}
+			}
+		}
 	}
 }

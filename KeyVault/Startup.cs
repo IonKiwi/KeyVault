@@ -1,5 +1,6 @@
 using KeyVault.Config;
 using KeyVault.Core;
+using KeyVault.Data;
 using KeyVault.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.Negotiate;
@@ -132,6 +133,22 @@ namespace KeyVault {
 
 					context.Response.StatusCode = 401;
 					context.Response.Headers["WWW-Authenticate"] = "Basic realm=\"KeyVault basic authentication\", charset=\"UTF-8\"";
+				});
+
+				endpoints.MapPost("/users", async context => {
+					var user = await JsonSerializer.DeserializeAsync<NewUser>(context.Request.Body);
+					if (user == null) {
+						context.Response.StatusCode = 404;
+						return;
+					}
+
+					var userId = await KeyVaultLogic.Instance.AddUser(user);
+					if (userId == null) {
+						context.Response.StatusCode = 400;
+						return;
+					}
+
+					await context.Response.WriteAsJsonAsync(new { userId = userId });
 				});
 
 				endpoints.MapGet("/", async context => {

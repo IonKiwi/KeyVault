@@ -56,10 +56,14 @@ namespace KeyVault.Core {
 			}
 		}
 
-		public void AddUser() {
+		public async ValueTask<long?> AddUser(NewUser user) {
 			EnsureInitialized();
 
+			if (string.IsNullOrEmpty(user.Name)) {
+				return null;
+			}
 
+			return await _data.AddUser(user).NoSync();
 		}
 
 		public AsymmetricSecurityKey GetSecurityKey() {
