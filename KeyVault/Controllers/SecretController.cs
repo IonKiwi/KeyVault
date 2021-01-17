@@ -56,7 +56,7 @@ namespace KeyVault.Controllers {
 		}
 
 		[HttpGet("NoAccess")]
-		public async ValueTask<OperationResult<List<(long secretId, string name)>>> NoAccess([FromServices] IKeyVaultLogic keyVault) {
+		public async ValueTask<OperationResult<AllSecretsResult>> NoAccess([FromServices] IKeyVaultLogic keyVault) {
 			var result = await keyVault.GetSecretsWithNoAccess(HttpContext.User);
 			SetStatusCode(result);
 			return result;
@@ -70,7 +70,7 @@ namespace KeyVault.Controllers {
 		}
 
 		[HttpGet("{secretName}/access")]
-		public async ValueTask<OperationResult<Dictionary<long, NewAccessData>>> Access([FromServices] IKeyVaultLogic keyVault, string secretName) {
+		public async ValueTask<OperationResult<SecretAccessResult>> Access([FromServices] IKeyVaultLogic keyVault, string secretName) {
 			var result = await keyVault.GetSecretAccess(HttpContext.User, secretName);
 			SetStatusCode(result);
 			return result;

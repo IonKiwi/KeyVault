@@ -5,8 +5,8 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace KeyVault.Data {
-	public class RolesResult {
-		[JsonPropertyName("roles")]
-		public string[] Roles { get; set; }
+	public class AccessData : NewAccessData {
+		[JsonPropertyName("userId")]
+		public long UserId { get; set; }
 	}
 }

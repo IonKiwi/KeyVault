@@ -39,20 +39,20 @@ namespace KeyVault.Core {
 			return _data.Create();
 		}
 
-		public async ValueTask<OperationResult<UserResponse>> AddUser(ClaimsPrincipal user, NewUser newUser) {
+		public async ValueTask<OperationResult<UserResult>> AddUser(ClaimsPrincipal user, NewUser newUser) {
 
 			if (newUser == null) {
-				return new OperationResult<UserResponse> { ValidationFailed = true, ValidationMessage = "No data" };
+				return new OperationResult<UserResult> { ValidationFailed = true, ValidationMessage = "No data" };
 			}
 			else if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
-				return new OperationResult<UserResponse> { Unauthorized = true };
+				return new OperationResult<UserResult> { Unauthorized = true };
 			}
 			else if (string.IsNullOrEmpty(newUser.Name)) {
-				return new OperationResult<UserResponse> { ValidationFailed = true, ValidationMessage = "[Name] is required" };
+				return new OperationResult<UserResult> { ValidationFailed = true, ValidationMessage = "[Name] is required" };
 			}
 
 			var userId = await _data.AddUser(newUser).NoSync();
-			return new OperationResult<UserResponse> { Created = true, Result = new UserResponse { UserId = userId } };
+			return new OperationResult<UserResult> { Created = true, Result = new UserResult { UserId = userId } };
 		}
 
 		public async ValueTask<OperationResult<CompletedResult>> UpdateUser(ClaimsPrincipal user, long userId, NewUser newUser) {
@@ -95,59 +95,69 @@ namespace KeyVault.Core {
 			return new OperationResult<UserData> { Result = new UserData { Name = userInfo.Name, UserId = userInfo.Id } };
 		}
 
-		public async ValueTask<OperationResult<RolesResult>> GetUserRoles(ClaimsPrincipal user, long userId) {
+		public async ValueTask<OperationResult<AllUsersResult>> GetUsers(ClaimsPrincipal user) {
 
 			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
-				return new OperationResult<RolesResult> { Unauthorized = true };
+				return new OperationResult<AllUsersResult> { Unauthorized = true };
 			}
 
-			var userInfo = await _data.GetUserInformation(userId).NoSync();
-			if (userInfo == null) {
-				return new OperationResult<RolesResult> { NotFound = true };
-			}
-
-			return new OperationResult<RolesResult> { Result = new RolesResult { Roles = userInfo.Roles.ToArray() } };
+			var users = await _data.GetUsers().NoSync();
+			return new OperationResult<AllUsersResult> { Result = new AllUsersResult { Users = users.Select(z => new UserData { Name = z.Name, UserId = z.Id }).ToList() } };
 		}
 
-		public async ValueTask<OperationResult<RolesResult>> ReplaceUserRoles(ClaimsPrincipal user, long userId, string[] roles) {
-			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
-			if (!(isAdmin || user.IsInRole(KeyVaultRoles.UserManagement))) {
-				return new OperationResult<RolesResult> { Unauthorized = true };
+		public async ValueTask<OperationResult<UserRolesResult>> GetUserRoles(ClaimsPrincipal user, long userId) {
+
+			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
+				return new OperationResult<UserRolesResult> { Unauthorized = true };
 			}
 
 			var userInfo = await _data.GetUserInformation(userId).NoSync();
 			if (userInfo == null) {
-				return new OperationResult<RolesResult> { NotFound = true };
+				return new OperationResult<UserRolesResult> { NotFound = true };
+			}
+
+			return new OperationResult<UserRolesResult> { Result = new UserRolesResult { Roles = userInfo.Roles.ToArray() } };
+		}
+
+		public async ValueTask<OperationResult<UserRolesResult>> ReplaceUserRoles(ClaimsPrincipal user, long userId, string[] roles) {
+			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
+			if (!(isAdmin || user.IsInRole(KeyVaultRoles.UserManagement))) {
+				return new OperationResult<UserRolesResult> { Unauthorized = true };
+			}
+
+			var userInfo = await _data.GetUserInformation(userId).NoSync();
+			if (userInfo == null) {
+				return new OperationResult<UserRolesResult> { NotFound = true };
 			}
 
 			foreach (var role in roles) {
 				// only roles that the current user has
 				if (!isAdmin && !user.IsInRole(role)) {
-					return new OperationResult<RolesResult> { Unauthorized = true };
+					return new OperationResult<UserRolesResult> { Unauthorized = true };
 				}
 			}
 
 			await _data.ReplaceUserRoles(userId, roles).NoSync();
 
-			return new OperationResult<RolesResult> { Result = new RolesResult { Roles = roles.ToArray() } };
+			return new OperationResult<UserRolesResult> { Result = new UserRolesResult { Roles = roles.ToArray() } };
 		}
 
-		public async ValueTask<OperationResult<RolesResult>> MergeUserRoles(ClaimsPrincipal user, long userId, string[] roles) {
+		public async ValueTask<OperationResult<UserRolesResult>> MergeUserRoles(ClaimsPrincipal user, long userId, string[] roles) {
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || user.IsInRole(KeyVaultRoles.UserManagement))) {
-				return new OperationResult<RolesResult> { Unauthorized = true };
+				return new OperationResult<UserRolesResult> { Unauthorized = true };
 			}
 
 			var userInfo = await _data.GetUserInformation(userId).NoSync();
 			if (userInfo == null) {
-				return new OperationResult<RolesResult> { NotFound = true };
+				return new OperationResult<UserRolesResult> { NotFound = true };
 			}
 
 			HashSet<string> toAdd = new HashSet<string>();
 			foreach (var role in roles) {
 				// only roles that the current user has
 				if (!isAdmin && !user.IsInRole(role)) {
-					return new OperationResult<RolesResult> { Unauthorized = true };
+					return new OperationResult<UserRolesResult> { Unauthorized = true };
 				}
 				if (!userInfo.Roles.Contains(role)) {
 					toAdd.Add(role);
@@ -155,31 +165,31 @@ namespace KeyVault.Core {
 			}
 
 			if (toAdd.Count == 0) {
-				return new OperationResult<RolesResult> { Result = new RolesResult { Roles = userInfo.Roles.ToArray() } };
+				return new OperationResult<UserRolesResult> { Result = new UserRolesResult { Roles = userInfo.Roles.ToArray() } };
 			}
 
 			await _data.AddUserRoles(userId, toAdd.ToArray()).NoSync();
 
 			toAdd.AddRange(userInfo.Roles);
-			return new OperationResult<RolesResult> { Result = new RolesResult { Roles = toAdd.ToArray() } };
+			return new OperationResult<UserRolesResult> { Result = new UserRolesResult { Roles = toAdd.ToArray() } };
 		}
 
-		public async ValueTask<OperationResult<RolesResult>> DeleteUserRoles(ClaimsPrincipal user, long userId, string[] roles) {
+		public async ValueTask<OperationResult<UserRolesResult>> DeleteUserRoles(ClaimsPrincipal user, long userId, string[] roles) {
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || user.IsInRole(KeyVaultRoles.UserManagement))) {
-				return new OperationResult<RolesResult> { Unauthorized = true };
+				return new OperationResult<UserRolesResult> { Unauthorized = true };
 			}
 
 			var userInfo = await _data.GetUserInformation(userId).NoSync();
 			if (userInfo == null) {
-				return new OperationResult<RolesResult> { NotFound = true };
+				return new OperationResult<UserRolesResult> { NotFound = true };
 			}
 
 			HashSet<string> toRemove = new HashSet<string>();
 			foreach (var role in roles) {
 				// only roles that the current user has
 				if (!isAdmin && !user.IsInRole(role)) {
-					return new OperationResult<RolesResult> { Unauthorized = true };
+					return new OperationResult<UserRolesResult> { Unauthorized = true };
 				}
 				if (userInfo.Roles.Contains(role)) {
 					toRemove.Add(role);
@@ -187,7 +197,7 @@ namespace KeyVault.Core {
 			}
 
 			if (toRemove.Count == 0) {
-				return new OperationResult<RolesResult> { Result = new RolesResult { Roles = userInfo.Roles.ToArray() } };
+				return new OperationResult<UserRolesResult> { Result = new UserRolesResult { Roles = userInfo.Roles.ToArray() } };
 			}
 
 			await _data.RemoveUserRoles(userId, toRemove.ToArray()).NoSync();
@@ -196,7 +206,7 @@ namespace KeyVault.Core {
 			foreach (var role in roles) {
 				remaining.Remove(role);
 			}
-			return new OperationResult<RolesResult> { Result = new RolesResult { Roles = remaining.ToArray() } };
+			return new OperationResult<UserRolesResult> { Result = new UserRolesResult { Roles = remaining.ToArray() } };
 		}
 
 		public AsymmetricSecurityKey GetSecurityKey() {
@@ -474,14 +484,14 @@ namespace KeyVault.Core {
 			return new OperationResult<CompletedResult> { Result = new CompletedResult { Completed = result } };
 		}
 
-		public async ValueTask<OperationResult<List<(long secretId, string name)>>> GetSecretsWithNoAccess(ClaimsPrincipal user) {
+		public async ValueTask<OperationResult<AllSecretsResult>> GetSecretsWithNoAccess(ClaimsPrincipal user) {
 
 			if (!user.IsInRole(KeyVaultRoles.Admin)) {
-				return new OperationResult<List<(long secretId, string name)>> { Unauthorized = true };
+				return new OperationResult<AllSecretsResult> { Unauthorized = true };
 			}
 
 			var result = await _data.GetSecretsWithNoAccess().NoSync();
-			return new OperationResult<List<(long secretId, string name)>> { Result = result };
+			return new OperationResult<AllSecretsResult> { Result = new AllSecretsResult { Secrets = result } };
 		}
 
 		public async ValueTask<OperationResult<CompletedResult>> DeleteSecretsWithNoAccess(ClaimsPrincipal user) {
@@ -494,19 +504,19 @@ namespace KeyVault.Core {
 			return new OperationResult<CompletedResult> { Result = new CompletedResult { Completed = result } };
 		}
 
-		public async ValueTask<OperationResult<List<(long credentialId, string credentialType, string identifier)>>> GetCredentials(ClaimsPrincipal user, long userId) {
+		public async ValueTask<OperationResult<UserCredentialsResult>> GetCredentials(ClaimsPrincipal user, long userId) {
 
 			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
-				return new OperationResult<List<(long credentialId, string credentialType, string identifier)>> { Unauthorized = true };
+				return new OperationResult<UserCredentialsResult> { Unauthorized = true };
 			}
 
 			var userInfo = await _data.GetUserInformation(userId).NoSync();
 			if (userInfo == null) {
-				return new OperationResult<List<(long credentialId, string credentialType, string identifier)>> { NotFound = true };
+				return new OperationResult<UserCredentialsResult> { NotFound = true };
 			}
 
 			var credentials = await _data.GetUserCredentials(userId).NoSync();
-			return new OperationResult<List<(long credentialId, string credentialType, string identifier)>> { Result = credentials };
+			return new OperationResult<UserCredentialsResult> { Result = new UserCredentialsResult { Credentials = credentials } };
 		}
 
 		public async ValueTask<OperationResult<CompletedResult>> DeleteCredential(ClaimsPrincipal user, long userId, long credentialId) {
@@ -586,30 +596,25 @@ namespace KeyVault.Core {
 			return new OperationResult<CredentialResult> { Created = true, Result = new CredentialResult { CredentialId = result } };
 		}
 
-		public async ValueTask<OperationResult<Dictionary<long, NewAccessData>>> GetSecretAccess(ClaimsPrincipal user, string secretName) {
+		public async ValueTask<OperationResult<SecretAccessResult>> GetSecretAccess(ClaimsPrincipal user, string secretName) {
 
 			if (string.IsNullOrEmpty(secretName)) {
-				return new OperationResult<Dictionary<long, NewAccessData>> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
+				return new OperationResult<SecretAccessResult> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();
 			if (secret != null) {
-				return new OperationResult<Dictionary<long, NewAccessData>> { NotFound = true };
+				return new OperationResult<SecretAccessResult> { NotFound = true };
 			}
 
 			// check access
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!isAdmin || !secret.Access.TryGetValue(userId, out var access) || !access.Assign) {
-				return new OperationResult<Dictionary<long, NewAccessData>> { Unauthorized = true };
+				return new OperationResult<SecretAccessResult> { Unauthorized = true };
 			}
 
-			Dictionary<long, NewAccessData> result = new Dictionary<long, NewAccessData>();
-			foreach (var a in secret.Access) {
-				result.Add(a.Key, new NewAccessData { Read = a.Value.Read, Write = a.Value.Write, Assign = a.Value.Write });
-			}
-
-			return new OperationResult<Dictionary<long, NewAccessData>> { Result = result };
+			return new OperationResult<SecretAccessResult> { Result = new SecretAccessResult() { Access = secret.Access.Select(a => new AccessData { UserId = a.Key, Read = a.Value.Read, Write = a.Value.Write, Assign = a.Value.Write }).ToList() } };
 		}
 
 		public async ValueTask<OperationResult<CompletedResult>> DeleteSecretAccess(ClaimsPrincipal user, string secretName, long userId) {

@@ -201,6 +201,44 @@ namespace KeyVault.Data {
 			}
 		}
 
+		public async ValueTask<List<UserInformation>> GetUsers() {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				var result = new List<UserInformation>();
+				using (var cmd = new SqliteCommand("SELECT [Id], [Name] FROM [User];", conn)) {
+
+					var reader = await cmd.ExecuteReaderAsync().NoSync();
+					await using (reader.NoSync()) {
+
+						while (await reader.ReadAsync().NoSync()) {
+
+							var userId = reader.GetInt64(0);
+							var name = reader.GetString(1);
+
+							var roles = new HashSet<string>();
+							using (var cmd2 = new SqliteCommand("SELECT [Role] FROM [UserRole] WHERE [UserId] = @userId;", conn)) {
+								cmd2.Parameters.AddWithValue("@userId", userId);
+
+								var reader2 = await cmd.ExecuteReaderAsync().NoSync();
+								await using (reader2.NoSync()) {
+
+									while (await reader2.ReadAsync().NoSync()) {
+										var role = reader2.GetString(0);
+										roles.Add(role);
+									}
+								}
+							}
+
+							result.Add(new UserInformation(userId, name, roles));
+						}
+					}
+				}
+
+				return result;
+			}
+		}
+
 		public async ValueTask<long> AddUser(NewUser user) {
 			using (var conn = new SqliteConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();

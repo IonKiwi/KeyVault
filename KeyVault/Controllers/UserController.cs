@@ -20,13 +20,18 @@ namespace KeyVault.Controllers {
 			_logger = logger;
 		}
 
+		[HttpGet()]
+		public ValueTask<OperationResult<AllUsersResult>> GetAll([FromServices] IKeyVaultLogic keyVault) {
+			return keyVault.GetUsers(HttpContext.User);
+		}
+
 		[HttpGet("{userId:long}")]
 		public ValueTask<OperationResult<UserData>> Get([FromServices] IKeyVaultLogic keyVault, long userId) {
 			return keyVault.GetUser(HttpContext.User, userId);
 		}
 
 		[HttpPost]
-		public async ValueTask<OperationResult<UserResponse>> Create([FromServices] IKeyVaultLogic keyVault, [FromBody] NewUser newUser) {
+		public async ValueTask<OperationResult<UserResult>> Create([FromServices] IKeyVaultLogic keyVault, [FromBody] NewUser newUser) {
 			var result = await keyVault.AddUser(HttpContext.User, newUser);
 			SetStatusCode(result);
 			return result;
@@ -47,7 +52,7 @@ namespace KeyVault.Controllers {
 		}
 
 		[HttpGet("{userId:long}/credential")]
-		public async ValueTask<OperationResult<List<(long credentialId, string credentialType, string identifier)>>> Credentials([FromServices] IKeyVaultLogic keyVault, long userId) {
+		public async ValueTask<OperationResult<UserCredentialsResult>> Credentials([FromServices] IKeyVaultLogic keyVault, long userId) {
 			var result = await keyVault.GetCredentials(HttpContext.User, userId);
 			SetStatusCode(result);
 			return result;
@@ -75,28 +80,28 @@ namespace KeyVault.Controllers {
 		}
 
 		[HttpGet("{userId:long}/role")]
-		public async ValueTask<OperationResult<RolesResult>> Roles([FromServices] IKeyVaultLogic keyVault, long userId) {
+		public async ValueTask<OperationResult<UserRolesResult>> Roles([FromServices] IKeyVaultLogic keyVault, long userId) {
 			var result = await keyVault.GetUserRoles(HttpContext.User, userId);
 			SetStatusCode(result);
 			return result;
 		}
 
 		[HttpPut("{userId:long}/role")]
-		public async ValueTask<OperationResult<RolesResult>> ReplaceRoles([FromServices] IKeyVaultLogic keyVault, long userId, [FromBody] string[] roles) {
+		public async ValueTask<OperationResult<UserRolesResult>> ReplaceRoles([FromServices] IKeyVaultLogic keyVault, long userId, [FromBody] string[] roles) {
 			var result = await keyVault.ReplaceUserRoles(HttpContext.User, userId, roles);
 			SetStatusCode(result);
 			return result;
 		}
 
 		[HttpPatch("{userId:long}/role")]
-		public async ValueTask<OperationResult<RolesResult>> MergeRoles([FromServices] IKeyVaultLogic keyVault, long userId, [FromBody] string[] roles) {
+		public async ValueTask<OperationResult<UserRolesResult>> MergeRoles([FromServices] IKeyVaultLogic keyVault, long userId, [FromBody] string[] roles) {
 			var result = await keyVault.MergeUserRoles(HttpContext.User, userId, roles);
 			SetStatusCode(result);
 			return result;
 		}
 
 		[HttpDelete("{userId:long}/role")]
-		public async ValueTask<OperationResult<RolesResult>> DeleteRoles([FromServices] IKeyVaultLogic keyVault, long userId, [FromBody] string[] roles) {
+		public async ValueTask<OperationResult<UserRolesResult>> DeleteRoles([FromServices] IKeyVaultLogic keyVault, long userId, [FromBody] string[] roles) {
 			var result = await keyVault.DeleteUserRoles(HttpContext.User, userId, roles);
 			SetStatusCode(result);
 			return result;
