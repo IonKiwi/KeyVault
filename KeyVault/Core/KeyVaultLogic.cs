@@ -76,6 +76,96 @@ namespace KeyVault.Core {
 			return new OperationResult<string[]> { Result = userInfo.Roles.ToArray() };
 		}
 
+		public async ValueTask<OperationResult<string[]>> ReplaceUserRoles(ClaimsPrincipal user, long userId, string[] roles) {
+			bool isAdmin = user.IsInRole("Admin");
+			if (!(isAdmin || user.IsInRole("UserManagement"))) {
+				return new OperationResult<string[]> { Unauthorized = true };
+			}
+
+			var userInfo = await _data.GetUserInformation(userId).NoSync();
+			if (userInfo == null) {
+				return new OperationResult<string[]> { NotFound = true };
+			}
+
+			foreach (var role in roles) {
+				// only roles that the current user has
+				if (!isAdmin && !user.IsInRole(role)) {
+					return new OperationResult<string[]> { Unauthorized = true };
+				}
+			}
+
+			await _data.ReplaceUserRoles(userId, roles).NoSync();
+
+			return new OperationResult<string[]> { Result = roles.ToArray() };
+		}
+
+		public async ValueTask<OperationResult<string[]>> MergeUserRoles(ClaimsPrincipal user, long userId, string[] roles) {
+			bool isAdmin = user.IsInRole("Admin");
+			if (!(isAdmin || user.IsInRole("UserManagement"))) {
+				return new OperationResult<string[]> { Unauthorized = true };
+			}
+
+			var userInfo = await _data.GetUserInformation(userId).NoSync();
+			if (userInfo == null) {
+				return new OperationResult<string[]> { NotFound = true };
+			}
+
+			HashSet<string> toAdd = new HashSet<string>();
+			foreach (var role in roles) {
+				// only roles that the current user has
+				if (!isAdmin && !user.IsInRole(role)) {
+					return new OperationResult<string[]> { Unauthorized = true };
+				}
+				if (!userInfo.Roles.Contains(role)) {
+					toAdd.Add(role);
+				}
+			}
+
+			if (toAdd.Count == 0) {
+				return new OperationResult<string[]> { Result = userInfo.Roles.ToArray() };
+			}
+
+			await _data.AddUserRoles(userId, toAdd.ToArray()).NoSync();
+
+			toAdd.AddRange(userInfo.Roles);
+			return new OperationResult<string[]> { Result = toAdd.ToArray() };
+		}
+
+		public async ValueTask<OperationResult<string[]>> DeleteUserRoles(ClaimsPrincipal user, long userId, string[] roles) {
+			bool isAdmin = user.IsInRole("Admin");
+			if (!(isAdmin || user.IsInRole("UserManagement"))) {
+				return new OperationResult<string[]> { Unauthorized = true };
+			}
+
+			var userInfo = await _data.GetUserInformation(userId).NoSync();
+			if (userInfo == null) {
+				return new OperationResult<string[]> { NotFound = true };
+			}
+
+			HashSet<string> toRemove = new HashSet<string>();
+			foreach (var role in roles) {
+				// only roles that the current user has
+				if (!isAdmin && !user.IsInRole(role)) {
+					return new OperationResult<string[]> { Unauthorized = true };
+				}
+				if (userInfo.Roles.Contains(role)) {
+					toRemove.Add(role);
+				}
+			}
+
+			if (toRemove.Count == 0) {
+				return new OperationResult<string[]> { Result = userInfo.Roles.ToArray() };
+			}
+
+			await _data.RemoveUserRoles(userId, toRemove.ToArray()).NoSync();
+
+			HashSet<string> remaining = new HashSet<string>(userInfo.Roles);
+			foreach (var role in roles) {
+				remaining.Remove(role);
+			}
+			return new OperationResult<string[]> { Result = remaining.ToArray() };
+		}
+
 		public AsymmetricSecurityKey GetSecurityKey() {
 			return new ECDsaSecurityKey(GetECDsa());
 		}

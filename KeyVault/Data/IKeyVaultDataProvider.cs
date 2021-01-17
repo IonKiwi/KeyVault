@@ -10,5 +10,8 @@ namespace KeyVault.Data {
 		ValueTask<UserInformation> GetUserInformation(long userId);
 		ValueTask<(long usserId, string value)?> GetUserCredential(string type, string identifier);
 		ValueTask<long> AddUser(NewUser user);
+		ValueTask ReplaceUserRoles(long userId, string[] roles);
+		ValueTask AddUserRoles(long userId, string[] roles);
+		ValueTask<bool?> RemoveUserRoles(long userId, string[] roles);
 	}
 }

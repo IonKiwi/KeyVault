@@ -117,5 +117,63 @@ namespace KeyVault.Data {
 				}
 			}
 		}
+
+		public async ValueTask ReplaceUserRoles(long userId, string[] roles) {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				using (var cmd = new SqliteCommand("DELETE FROM [UserRole] WHERE [UserId] = @userId;", conn)) {
+					cmd.Parameters.AddWithValue("@userId", userId);
+					await cmd.ExecuteNonQueryAsync().NoSync();
+				}
+
+				foreach (var role in roles) {
+					using (var cmd = new SqliteCommand("INSERT INTO [UserRole] ([UserId], [Role]) VALUES (@userId, @role);", conn)) {
+						cmd.Parameters.AddWithValue("@userId", userId);
+						cmd.Parameters.AddWithValue("@role", role);
+						await cmd.ExecuteNonQueryAsync().NoSync();
+					}
+				}
+			}
+		}
+
+		public async ValueTask AddUserRoles(long userId, string[] roles) {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				foreach (var role in roles) {
+					using (var cmd = new SqliteCommand("INSERT INTO [UserRole] ([UserId], [Role]) VALUES (@userId, @role);", conn)) {
+						cmd.Parameters.AddWithValue("@userId", userId);
+						cmd.Parameters.AddWithValue("@role", role);
+						await cmd.ExecuteNonQueryAsync().NoSync();
+					}
+				}
+			}
+		}
+
+		public async ValueTask<bool?> RemoveUserRoles(long userId, string[] roles) {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				bool allRemoved = true;
+				bool allFailed = true;
+				foreach (var role in roles) {
+					using (var cmd = new SqliteCommand("DELETE FROM [UserRole] WHERE [UserId] = @userId AND [Role] = @role;", conn)) {
+						cmd.Parameters.AddWithValue("@userId", userId);
+						cmd.Parameters.AddWithValue("@role", role);
+						int x = await cmd.ExecuteNonQueryAsync().NoSync();
+						if (x == 0) {
+							allRemoved = false;
+						}
+						else {
+							allFailed = false;
+						}
+					}
+				}
+
+				return allRemoved ? true : (allFailed ? false : null);
+			}
+		}
+
 	}
 }
