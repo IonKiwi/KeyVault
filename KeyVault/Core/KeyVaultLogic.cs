@@ -339,6 +339,34 @@ namespace KeyVault.Core {
 			return new OperationResult<string> { Result = result };
 		}
 
+		public async ValueTask<OperationResult<byte[]>> GetSecretAsBinrary(ClaimsPrincipal user, string name) {
+			var secret = await _data.GetSecret(name).NoSync();
+			if (secret == null) {
+				return new OperationResult<byte[]> { NotFound = true };
+			}
+
+			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
+			var isAdmin = user.IsInRole(KeyVaultRoles.Admin);
+			if (!(isAdmin || (secret.Access.TryGetValue(userId, out var access) && access.Read))) {
+				return new OperationResult<byte[]> { Unauthorized = true };
+			}
+
+			byte[] plainData;
+			using (var aes = GetAes()) {
+				aes.IV = secret.IV;
+				using (var output = new MemoryStream()) {
+					using (var input = new MemoryStream(secret.Value)) {
+						using (var crypto = new CryptoStream(input, aes.CreateDecryptor(), CryptoStreamMode.Read)) {
+							crypto.CopyTo(output);
+						}
+					}
+					plainData = output.ToArray();
+				}
+			}
+
+			return new OperationResult<byte[]> { Result = plainData };
+		}
+
 		public async ValueTask<OperationResult<SecretResult>> NewSecret(ClaimsPrincipal user, NewSecret newSecret) {
 
 			if (newSecret == null) {

@@ -41,6 +41,18 @@ namespace KeyVault.Controllers {
 			return new ObjectResult(secret.Result);
 		}
 
+		[HttpGet("{secretName}/bin")]
+		public async ValueTask<IActionResult> GetBinary([FromServices] IKeyVaultLogic keyVault, string secretName) {
+			var secret = await keyVault.GetSecretAsBinrary(HttpContext.User, secretName);
+			if (secret.NotFound) {
+				return NotFound();
+			}
+			else if (secret.Unauthorized) {
+				return Unauthorized();
+			}
+			return File(secret.Result, "application/octet-stream");
+		}
+
 		[HttpPost]
 		public async ValueTask<OperationResult<SecretResult>> Post([FromServices] IKeyVaultLogic keyVault, [FromBody] NewSecret newSecret) {
 			var result = await keyVault.NewSecret(HttpContext.User, newSecret);
