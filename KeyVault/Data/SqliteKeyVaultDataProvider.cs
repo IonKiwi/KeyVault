@@ -85,7 +85,7 @@ namespace KeyVault.Data {
 
 						long userId = reader.GetInt64(0);
 						string value = null;
-						if (!await reader.IsDBNullAsync(1)) {
+						if (!await reader.IsDBNullAsync(1).NoSync()) {
 							value = reader.GetString(1);
 						}
 						return (userId, value);

@@ -383,7 +383,7 @@ namespace KeyVault.Core {
 			}
 
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
-			long secretId = await _data.CreateSecret(userId, newSecret.Name, secretType, secretData, iv);
+			long secretId = await _data.CreateSecret(userId, newSecret.Name, secretType, secretData, iv).NoSync();
 			return new OperationResult<long> { Result = secretId };
 		}
 
@@ -447,7 +447,7 @@ namespace KeyVault.Core {
 			}
 
 
-			long secretId = await _data.UpdateSecret(userId, secretName, secretType, secretData, iv);
+			long secretId = await _data.UpdateSecret(userId, secretName, secretType, secretData, iv).NoSync();
 			return new OperationResult<long> { Result = secretId };
 		}
 
@@ -545,7 +545,7 @@ namespace KeyVault.Core {
 				return new OperationResult<long> { Conflict = true };
 			}
 
-			var result = await _data.AddCredential(userId, KeyVaultCredentialType.Windows, account, null);
+			var result = await _data.AddCredential(userId, KeyVaultCredentialType.Windows, account, null).NoSync();
 			return new OperationResult<long> { Result = result };
 		}
 
@@ -581,7 +581,7 @@ namespace KeyVault.Core {
 				Salt = iv
 			};
 
-			var result = await _data.AddCredential(userId, KeyVaultCredentialType.Basic, username, JsonSerializer.Serialize(credential));
+			var result = await _data.AddCredential(userId, KeyVaultCredentialType.Basic, username, JsonSerializer.Serialize(credential)).NoSync();
 			return new OperationResult<long> { Result = result };
 		}
 
@@ -629,7 +629,7 @@ namespace KeyVault.Core {
 				return new OperationResult<bool> { Unauthorized = true };
 			}
 
-			var result = await _data.DeleteSecretAccess(secret.Id, userId);
+			var result = await _data.DeleteSecretAccess(secret.Id, userId).NoSync();
 			return new OperationResult<bool> { Result = result };
 		}
 
@@ -651,7 +651,7 @@ namespace KeyVault.Core {
 				return new OperationResult<bool> { Unauthorized = true };
 			}
 
-			var result = await _data.AddOrUpdateSecretAccess(secret.Id, userId, data.Read, data.Write, data.Assign);
+			var result = await _data.AddOrUpdateSecretAccess(secret.Id, userId, data.Read, data.Write, data.Assign).NoSync();
 			return new OperationResult<bool> { Result = result };
 		}
 	}
