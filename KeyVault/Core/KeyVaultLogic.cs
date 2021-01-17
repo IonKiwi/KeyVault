@@ -656,10 +656,42 @@ namespace KeyVault.Core {
 			return new OperationResult<CompletedResult> { Result = new CompletedResult { Completed = result } };
 		}
 
+		public async ValueTask<OperationResult<CompletedResult>> AddSecretAccess(ClaimsPrincipal user, string secretName, long userId, NewAccessData data) {
+
+			if (string.IsNullOrEmpty(secretName)) {
+				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
+			}
+			else if (!data.Read && !data.Write && !data.Assign) {
+				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "Specify [Read] and/or [Write] and/or [Assign] access for [SecretName] or delete the access" };
+			}
+
+			var secret = await _data.GetSecret(secretName).NoSync();
+			if (secret == null) {
+				return new OperationResult<CompletedResult> { NotFound = true };
+			}
+
+			// check access
+			var currentUserId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
+			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
+			if (!(isAdmin || (secret.Access.TryGetValue(currentUserId, out var access) && access.Assign))) {
+				return new OperationResult<CompletedResult> { Unauthorized = true };
+			}
+
+			if (secret.Access.ContainsKey(userId)) {
+				return new OperationResult<CompletedResult> { Conflict = true };
+			}
+
+			var result = await _data.AddSecretAccess(secret.Id, userId, data.Read, data.Write, data.Assign).NoSync();
+			return new OperationResult<CompletedResult> { Result = new CompletedResult { Completed = result } };
+		}
+
 		public async ValueTask<OperationResult<CompletedResult>> AddOrUpdateSecretAccess(ClaimsPrincipal user, string secretName, long userId, NewAccessData data) {
 
 			if (string.IsNullOrEmpty(secretName)) {
 				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
+			}
+			else if (!data.Read && !data.Write && !data.Assign) {
+				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "Specify [Read] and/or [Write] and/or [Assign] access for [SecretName] or delete the access" };
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();

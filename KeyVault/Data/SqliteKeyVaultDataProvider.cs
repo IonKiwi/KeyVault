@@ -438,7 +438,7 @@ namespace KeyVault.Data {
 				await conn.OpenAsync().NoSync();
 
 				var result = new List<(long secretId, string name)>();
-				using (var cmd = new SqliteCommand("SELECT [A].[Id], [A].[Name] FROM [Secret] [A] WHERE [A].[UserId] = @userId;", conn)) {
+				using (var cmd = new SqliteCommand("SELECT [A].[Id], [A].[Name] FROM [Secret] [A] WHERE [A].[Id] IN (SELECT DISTINCT [B].[SecretId] FROM [SecretAccess] [B] WHERE [B].[UserId] = @userId AND ([B].[Read] = 1 OR [B].[Write] = 1 OR [B].[Assign] = 1));", conn)) {
 					cmd.Parameters.AddWithValue("@userId", userId);
 
 					var reader = await cmd.ExecuteReaderAsync().NoSync();
@@ -458,7 +458,7 @@ namespace KeyVault.Data {
 				await conn.OpenAsync().NoSync();
 
 				var result = new List<(long secretId, string name)>();
-				using (var cmd = new SqliteCommand("DELETE FROM [Secret] WHERE [Id] NOT IN (SELECT DISTINCT [SecretId] FROM [SecretAccess]);", conn)) {
+				using (var cmd = new SqliteCommand("DELETE FROM [Secret] WHERE [Id] NOT IN (SELECT DISTINCT [B].[SecretId] FROM [SecretAccess] [B]);", conn)) {
 					return await cmd.ExecuteNonQueryAsync().NoSync() > 0;
 				}
 
@@ -557,12 +557,28 @@ namespace KeyVault.Data {
 			}
 		}
 
+		public async ValueTask<bool> AddSecretAccess(long secretId, long userId, bool read, bool write, bool assign) {
+
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				using (var cmd = new SqliteCommand("INSERT INTO [SecretAccess] ([SecretId], [UserId], [Read], [Write], [Assign]) VALUES (@secretId, @userId, @read, @write, @assign);", conn)) {
+					cmd.Parameters.AddWithValue("@secretId", secretId);
+					cmd.Parameters.AddWithValue("@userId", userId);
+					cmd.Parameters.AddWithValue("@read", read);
+					cmd.Parameters.AddWithValue("@write", write);
+					cmd.Parameters.AddWithValue("@assign", assign);
+					return await cmd.ExecuteNonQueryAsync().NoSync() > 0;
+				}
+			}
+		}
+
 		public async ValueTask<bool> AddOrUpdateSecretAccess(long secretId, long userId, bool read, bool write, bool assign) {
 
 			using (var conn = new SqliteConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();
 
-				using (var cmd = new SqliteCommand("INSERT INTO [SecretAccess] ([SecretId], [UserId], [Read], [Write], [Assign]) VALUES (@secretId, @userId, @read, @write @assign) ON CONFLICT DO UPDATE SET [Read] = @read, [Write] = @write, [Assign] = @assign WHERE [SecretId] = @secretId AND [UserId] = @userId", conn)) {
+				using (var cmd = new SqliteCommand("INSERT INTO [SecretAccess] ([SecretId], [UserId], [Read], [Write], [Assign]) VALUES (@secretId, @userId, @read, @write, @assign) ON CONFLICT([SecretId], [UserId]) DO UPDATE SET [Read] = @read, [Write] = @write, [Assign] = @assign;", conn)) {
 					cmd.Parameters.AddWithValue("@secretId", secretId);
 					cmd.Parameters.AddWithValue("@userId", userId);
 					cmd.Parameters.AddWithValue("@read", read);

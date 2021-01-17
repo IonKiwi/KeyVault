@@ -33,6 +33,7 @@ namespace KeyVault.Core {
 		ValueTask<OperationResult<CredentialResult>> AddBasicCredential(ClaimsPrincipal user, long userId, string username, string password);
 		ValueTask<OperationResult<SecretAccessResult>> GetSecretAccess(ClaimsPrincipal user, string secretName);
 		ValueTask<OperationResult<CompletedResult>> DeleteSecretAccess(ClaimsPrincipal user, string secretName, long userId);
+		ValueTask<OperationResult<CompletedResult>> AddSecretAccess(ClaimsPrincipal user, string secretName, long userId, NewAccessData data);
 		ValueTask<OperationResult<CompletedResult>> AddOrUpdateSecretAccess(ClaimsPrincipal user, string secretName, long userId, NewAccessData data);
 	}
 }

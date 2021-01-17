@@ -28,6 +28,7 @@ namespace KeyVault.Data {
 		ValueTask<List<(long secretId, string name)>> GetSecretsWithNoAccess();
 		ValueTask<KeyVaultSecret> GetSecret(string name);
 		ValueTask<bool> DeleteSecretAccess(long secretId, long userId);
+		ValueTask<bool> AddSecretAccess(long secretId, long userId, bool read, bool write, bool assign);
 		ValueTask<bool> AddOrUpdateSecretAccess(long secretId, long userId, bool read, bool write, bool assign);
 	}
 }
