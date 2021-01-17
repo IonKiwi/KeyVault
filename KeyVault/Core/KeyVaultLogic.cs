@@ -17,7 +17,8 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace KeyVault.Core {
-	public sealed class KeyVaultLogic {
+
+	public sealed class KeyVaultLogic : IKeyVaultLogic {
 
 		private IKeyVaultDataProvider _data;
 		private IKeyVaultTokenKey _tokenKey;
@@ -39,7 +40,7 @@ namespace KeyVault.Core {
 			if (newUser == null) {
 				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "No data" };
 			}
-			else if (!(user.IsInRole("UserManagement") || user.IsInRole("Admin"))) {
+			else if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
 				return new OperationResult<long> { Unauthorized = true };
 			}
 			else if (string.IsNullOrEmpty(newUser.Name)) {
@@ -55,7 +56,7 @@ namespace KeyVault.Core {
 			if (newUser == null) {
 				return new OperationResult<bool> { ValidationFailed = true, ValidationMessage = "No data" };
 			}
-			else if (!(user.IsInRole("UserManagement") || user.IsInRole("Admin"))) {
+			else if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
 				return new OperationResult<bool> { Unauthorized = true };
 			}
 			else if (string.IsNullOrEmpty(newUser.Name)) {
@@ -68,7 +69,7 @@ namespace KeyVault.Core {
 
 		public async ValueTask<OperationResult<bool>> DeleteUser(ClaimsPrincipal user, long userId) {
 
-			if (!(user.IsInRole("UserManagement") || user.IsInRole("Admin"))) {
+			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
 				return new OperationResult<bool> { Unauthorized = true };
 			}
 
@@ -78,7 +79,7 @@ namespace KeyVault.Core {
 
 		public async ValueTask<OperationResult<UserData>> GetUser(ClaimsPrincipal user, long userId) {
 
-			if (!(user.IsInRole("UserManagement") || user.IsInRole("Admin"))) {
+			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
 				return new OperationResult<UserData> { Unauthorized = true };
 			}
 
@@ -92,7 +93,7 @@ namespace KeyVault.Core {
 
 		public async ValueTask<OperationResult<string[]>> GetUserRoles(ClaimsPrincipal user, long userId) {
 
-			if (!(user.IsInRole("UserManagement") || user.IsInRole("Admin"))) {
+			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
 				return new OperationResult<string[]> { Unauthorized = true };
 			}
 
@@ -105,8 +106,8 @@ namespace KeyVault.Core {
 		}
 
 		public async ValueTask<OperationResult<string[]>> ReplaceUserRoles(ClaimsPrincipal user, long userId, string[] roles) {
-			bool isAdmin = user.IsInRole("Admin");
-			if (!(isAdmin || user.IsInRole("UserManagement"))) {
+			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
+			if (!(isAdmin || user.IsInRole(KeyVaultRoles.UserManagement))) {
 				return new OperationResult<string[]> { Unauthorized = true };
 			}
 
@@ -128,8 +129,8 @@ namespace KeyVault.Core {
 		}
 
 		public async ValueTask<OperationResult<string[]>> MergeUserRoles(ClaimsPrincipal user, long userId, string[] roles) {
-			bool isAdmin = user.IsInRole("Admin");
-			if (!(isAdmin || user.IsInRole("UserManagement"))) {
+			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
+			if (!(isAdmin || user.IsInRole(KeyVaultRoles.UserManagement))) {
 				return new OperationResult<string[]> { Unauthorized = true };
 			}
 
@@ -160,8 +161,8 @@ namespace KeyVault.Core {
 		}
 
 		public async ValueTask<OperationResult<string[]>> DeleteUserRoles(ClaimsPrincipal user, long userId, string[] roles) {
-			bool isAdmin = user.IsInRole("Admin");
-			if (!(isAdmin || user.IsInRole("UserManagement"))) {
+			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
+			if (!(isAdmin || user.IsInRole(KeyVaultRoles.UserManagement))) {
 				return new OperationResult<string[]> { Unauthorized = true };
 			}
 
@@ -216,7 +217,7 @@ namespace KeyVault.Core {
 
 		public async ValueTask<(bool success, string token)> AuthenticateWindows(ClaimsPrincipal user) {
 
-			var credentials = await _data.GetUserCredential("Windows", user.Identity.Name).NoSync();
+			var credentials = await _data.GetUserCredential(KeyVaultCredentialType.Windows, user.Identity.Name).NoSync();
 			if (credentials == null) {
 				return (false, null);
 			}
@@ -235,7 +236,7 @@ namespace KeyVault.Core {
 
 		public async ValueTask<(bool success, string token)> AuthenticateBasic(string user, string password) {
 
-			var credentials = await _data.GetUserCredential("Basic", user).NoSync();
+			var credentials = await _data.GetUserCredential(KeyVaultCredentialType.Basic, user).NoSync();
 			if (credentials.HasValue) {
 				var basicCredential = JsonSerializer.Deserialize<BasicCredential>(credentials.Value.value);
 				byte[] passwordData = basicCredential.Salt.Concat(Encoding.UTF8.GetBytes(password)).ToArray();
@@ -249,7 +250,7 @@ namespace KeyVault.Core {
 				}
 			}
 			else {
-				credentials = await _data.GetUserCredential("BasicPlainText", user).NoSync();
+				credentials = await _data.GetUserCredential(KeyVaultCredentialType.BasicPlainText, user).NoSync();
 				if (!credentials.HasValue || !string.Equals(password, credentials.Value.value, StringComparison.Ordinal)) {
 					return (false, null);
 				}
@@ -294,7 +295,7 @@ namespace KeyVault.Core {
 			}
 
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
-			var isAdmin = user.IsInRole("Admin");
+			var isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!isAdmin || !secret.Access.TryGetValue(userId, out var access) || !access.Read) {
 				return new OperationResult<string> { Unauthorized = true };
 			}
@@ -331,7 +332,7 @@ namespace KeyVault.Core {
 			if (newSecret == null) {
 				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "No data" };
 			}
-			else if (!(user.IsInRole("CreateSecret") || user.IsInRole("Admin"))) {
+			else if (!(user.IsInRole(KeyVaultRoles.CreateSecret) || user.IsInRole(KeyVaultRoles.Admin))) {
 				return new OperationResult<long> { Unauthorized = true };
 			}
 			else if (string.IsNullOrEmpty(newSecret.Name)) {
@@ -428,7 +429,7 @@ namespace KeyVault.Core {
 
 			// check access
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
-			bool isAdmin = user.IsInRole("Admin");
+			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!isAdmin || !secret.Access.TryGetValue(userId, out var access) || !access.Write) {
 				return new OperationResult<long> { Unauthorized = true };
 			}
@@ -463,7 +464,7 @@ namespace KeyVault.Core {
 
 			// check access
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
-			bool isAdmin = user.IsInRole("Admin");
+			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!isAdmin || !secret.Access.TryGetValue(userId, out var access) || !access.Write) {
 				return new OperationResult<bool> { Unauthorized = true };
 			}
@@ -474,7 +475,7 @@ namespace KeyVault.Core {
 
 		public async ValueTask<OperationResult<List<(long secretId, string name)>>> GetSecretsWithNoAccess(ClaimsPrincipal user) {
 
-			if (!user.IsInRole("Admin")) {
+			if (!user.IsInRole(KeyVaultRoles.Admin)) {
 				return new OperationResult<List<(long secretId, string name)>> { Unauthorized = true };
 			}
 
@@ -484,7 +485,7 @@ namespace KeyVault.Core {
 
 		public async ValueTask<OperationResult<bool>> DeleteSecretsWithNoAccess(ClaimsPrincipal user) {
 
-			if (!user.IsInRole("Admin")) {
+			if (!user.IsInRole(KeyVaultRoles.Admin)) {
 				return new OperationResult<bool> { Unauthorized = true };
 			}
 

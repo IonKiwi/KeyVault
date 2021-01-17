@@ -62,7 +62,7 @@ namespace KeyVault {
 
 			var keyVault = new KeyVaultLogic();
 			keyVault.Initialize(global.KeyVault);
-			services.AddSingleton<KeyVaultLogic>(keyVault);
+			services.AddSingleton<IKeyVaultLogic>(keyVault);
 
 			services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 				.AddJwtBearer(options => {
