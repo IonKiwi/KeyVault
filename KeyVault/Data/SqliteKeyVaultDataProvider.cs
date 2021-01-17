@@ -1,7 +1,10 @@
-﻿using KeyVault.Extensions;
+﻿using KeyVault.Core;
+using KeyVault.Extensions;
+using KeyVault.Utilities;
 using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -26,15 +29,31 @@ namespace KeyVault.Data {
 					await cmd.ExecuteNonQueryAsync().NoSync();
 				}
 
+				using (var cmd = new SqliteCommand("CREATE INDEX [UserRole_UserId] ON [UserRole] ([UserId]);", conn)) {
+					await cmd.ExecuteNonQueryAsync().NoSync();
+				}
+
 				using (var cmd = new SqliteCommand("CREATE TABLE [UserCredential] ([Id] INTEGER PRIMARY KEY AUTOINCREMENT, [UserId] INTEGER NOT NULL, [Type] TEXT NOT NULL, [Identifier] TEXT NOT NULL, [Value] TEXT NULL, FOREIGN KEY (UserId) REFERENCES [User](Id) ON DELETE CASCADE ON UPDATE CASCADE, UNIQUE([Type], [Identifier]) ON CONFLICT FAIL);", conn)) {
 					await cmd.ExecuteNonQueryAsync().NoSync();
 				}
 
-				using (var cmd = new SqliteCommand("CREATE TABLE [Secret] ([Id] INTEGER PRIMARY KEY AUTOINCREMENT, [Name] TEXT NOT NULL, [Value] TEXT NOT NULL, [IV] BINARY NOT NULL);", conn)) {
+				using (var cmd = new SqliteCommand("CREATE INDEX [UserCredential_UserId] ON [UserCredential] ([UserId]);", conn)) {
 					await cmd.ExecuteNonQueryAsync().NoSync();
 				}
 
-				using (var cmd = new SqliteCommand("CREATE TABLE [SecretAccess] ([SecretId] INTEGER NOT NULL, [UserId] INTEGER NOT NULL, [Access] TEXT NOT NULL, FOREIGN KEY (UserId) REFERENCES [User](Id) ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY (SecretId) REFERENCES [Secret](Id) ON DELETE CASCADE ON UPDATE CASCADE);", conn)) {
+				using (var cmd = new SqliteCommand("CREATE TABLE [Secret] ([Id] INTEGER PRIMARY KEY AUTOINCREMENT, [Name] TEXT NOT NULL, [Type] TEXT NOT NULL, [Value] BINARY NOT NULL, [IV] BINARY NOT NULL, [CreateDate] DATETIME NOT NULL, [CreatorUserId] INTEGER NULL, [LastUpdateDate] DATETIME NULL, [LastUpdateUserId] INTEGER NULL, FOREIGN KEY (CreatorUserId) REFERENCES [User](Id) ON DELETE SET NULL ON UPDATE CASCADE, FOREIGN KEY (LastUpdateUserId) REFERENCES [User](Id) ON DELETE SET NULL ON UPDATE CASCADE, UNIQUE([Name]));", conn)) {
+					await cmd.ExecuteNonQueryAsync().NoSync();
+				}
+
+				using (var cmd = new SqliteCommand("CREATE UNIQUE INDEX [SECRET_UNIQUE_NAME] ON [Secret] ([Name]);", conn)) {
+					await cmd.ExecuteNonQueryAsync().NoSync();
+				}
+
+				using (var cmd = new SqliteCommand("CREATE TABLE [SecretAccess] ([SecretId] INTEGER NOT NULL, [UserId] INTEGER NOT NULL, [Read] BOOLEAN NOT NULL, [Write] BOOLEAN NOT NULL, [Assign] BOOLEAN NOT NULL, FOREIGN KEY (UserId) REFERENCES [User](Id) ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY (SecretId) REFERENCES [Secret](Id) ON DELETE CASCADE ON UPDATE CASCADE);", conn)) {
+					await cmd.ExecuteNonQueryAsync().NoSync();
+				}
+
+				using (var cmd = new SqliteCommand("CREATE INDEX [SecretAccess_SecretId] ON [SecretAccess] ([SecretId]);", conn)) {
 					await cmd.ExecuteNonQueryAsync().NoSync();
 				}
 
@@ -122,17 +141,23 @@ namespace KeyVault.Data {
 			using (var conn = new SqliteConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();
 
-				using (var cmd = new SqliteCommand("DELETE FROM [UserRole] WHERE [UserId] = @userId;", conn)) {
-					cmd.Parameters.AddWithValue("@userId", userId);
-					await cmd.ExecuteNonQueryAsync().NoSync();
-				}
+				var transaction = (SqliteTransaction)await conn.BeginTransactionAsync().NoSync();
+				await using (transaction.NoSync()) {
 
-				foreach (var role in roles) {
-					using (var cmd = new SqliteCommand("INSERT INTO [UserRole] ([UserId], [Role]) VALUES (@userId, @role);", conn)) {
+					using (var cmd = new SqliteCommand("DELETE FROM [UserRole] WHERE [UserId] = @userId;", conn, transaction)) {
 						cmd.Parameters.AddWithValue("@userId", userId);
-						cmd.Parameters.AddWithValue("@role", role);
 						await cmd.ExecuteNonQueryAsync().NoSync();
 					}
+
+					foreach (var role in roles) {
+						using (var cmd = new SqliteCommand("INSERT INTO [UserRole] ([UserId], [Role]) VALUES (@userId, @role);", conn, transaction)) {
+							cmd.Parameters.AddWithValue("@userId", userId);
+							cmd.Parameters.AddWithValue("@role", role);
+							await cmd.ExecuteNonQueryAsync().NoSync();
+						}
+					}
+
+					await transaction.CommitAsync().NoSync();
 				}
 			}
 		}
@@ -141,12 +166,18 @@ namespace KeyVault.Data {
 			using (var conn = new SqliteConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();
 
-				foreach (var role in roles) {
-					using (var cmd = new SqliteCommand("INSERT INTO [UserRole] ([UserId], [Role]) VALUES (@userId, @role);", conn)) {
-						cmd.Parameters.AddWithValue("@userId", userId);
-						cmd.Parameters.AddWithValue("@role", role);
-						await cmd.ExecuteNonQueryAsync().NoSync();
+				var transaction = (SqliteTransaction)await conn.BeginTransactionAsync().NoSync();
+				await using (transaction.NoSync()) {
+
+					foreach (var role in roles) {
+						using (var cmd = new SqliteCommand("INSERT INTO [UserRole] ([UserId], [Role]) VALUES (@userId, @role);", conn, transaction)) {
+							cmd.Parameters.AddWithValue("@userId", userId);
+							cmd.Parameters.AddWithValue("@role", role);
+							await cmd.ExecuteNonQueryAsync().NoSync();
+						}
 					}
+
+					await transaction.CommitAsync().NoSync();
 				}
 			}
 		}
@@ -155,23 +186,180 @@ namespace KeyVault.Data {
 			using (var conn = new SqliteConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();
 
-				bool allRemoved = true;
-				bool allFailed = true;
-				foreach (var role in roles) {
-					using (var cmd = new SqliteCommand("DELETE FROM [UserRole] WHERE [UserId] = @userId AND [Role] = @role;", conn)) {
-						cmd.Parameters.AddWithValue("@userId", userId);
-						cmd.Parameters.AddWithValue("@role", role);
-						int x = await cmd.ExecuteNonQueryAsync().NoSync();
-						if (x == 0) {
-							allRemoved = false;
+				var transaction = (SqliteTransaction)await conn.BeginTransactionAsync().NoSync();
+				await using (transaction.NoSync()) {
+
+					bool allRemoved = true;
+					bool allFailed = true;
+					foreach (var role in roles) {
+						using (var cmd = new SqliteCommand("DELETE FROM [UserRole] WHERE [UserId] = @userId AND [Role] = @role;", conn, transaction)) {
+							cmd.Parameters.AddWithValue("@userId", userId);
+							cmd.Parameters.AddWithValue("@role", role);
+							int x = await cmd.ExecuteNonQueryAsync().NoSync();
+							if (x == 0) {
+								allRemoved = false;
+							}
+							else {
+								allFailed = false;
+							}
 						}
-						else {
-							allFailed = false;
+					}
+
+					await transaction.CommitAsync().NoSync();
+					return allRemoved ? true : (allFailed ? false : null);
+				}
+			}
+		}
+
+		public async ValueTask<long> CreateSecret(long userId, string name, byte[] value, byte[] iv) {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				var transaction = (SqliteTransaction)await conn.BeginTransactionAsync().NoSync();
+				await using (transaction.NoSync()) {
+
+					long secretId;
+					using (var cmd = new SqliteCommand("INSERT INTO [Secret] ([Name], [Value], [IV], [CreateDate], CreatorUserId]) VALUES (@name, @value, @iv, @createDate, @creatorUserId); SELECT last_insert_rowid();", conn, transaction)) {
+						cmd.Parameters.AddWithValue("@name", name);
+						cmd.Parameters.AddWithValue("@value", value);
+						cmd.Parameters.AddWithValue("@iv", iv);
+						cmd.Parameters.AddWithValue("@createDate", CommonUtility.GetTimestamp());
+						cmd.Parameters.AddWithValue("@creatorUserId", userId);
+						secretId = (long)await cmd.ExecuteScalarAsync().NoSync();
+					}
+
+					using (var cmd = new SqliteCommand("INSERT INTO [SecretAccess] ([SecretId], [UserId], [Read], [Write], [Assign]) VALUES (@secretId, @userId, @read, @write, @assign); SELECT last_insert_rowid();", conn, transaction)) {
+						cmd.Parameters.AddWithValue("@secretId", secretId);
+						cmd.Parameters.AddWithValue("@userId", userId);
+						cmd.Parameters.AddWithValue("@read", true);
+						cmd.Parameters.AddWithValue("@write", true);
+						cmd.Parameters.AddWithValue("@assign", true);
+						secretId = (long)await cmd.ExecuteScalarAsync().NoSync();
+					}
+
+					await transaction.CommitAsync().NoSync();
+					return secretId;
+				}
+			}
+		}
+
+		public async ValueTask<long> UpdateSecret(long userId, string name, byte[] value, byte[] iv) {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				long secretId;
+				using (var cmd = new SqliteCommand("UPDATE [Secret] SET [Value] = @value, [IV] = @iv, [LastUpdateDate] = @lastUpdateData, [LastUpdateUserId] = @lastUpdateUserId WHERE [Name] = @name; SELECT [Id] FROM [Secret] WHERE [Name] = @name;", conn)) {
+					cmd.Parameters.AddWithValue("@name", name);
+					cmd.Parameters.AddWithValue("@value", value);
+					cmd.Parameters.AddWithValue("@iv", iv);
+					cmd.Parameters.AddWithValue("@lastUpdateData", CommonUtility.GetTimestamp());
+					cmd.Parameters.AddWithValue("@lastUpdateUserId", userId);
+					secretId = (long)await cmd.ExecuteScalarAsync().NoSync();
+					return secretId;
+				}
+			}
+		}
+
+		public async ValueTask<bool> DeleteSecret(long userId, string name) {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				var result = new List<(long secretId, string name)>();
+				using (var cmd = new SqliteCommand("DELETE FROM [Secret] WHERE [Name] = @name;", conn)) {
+					cmd.Parameters.AddWithValue("@name", name);
+					return await cmd.ExecuteNonQueryAsync().NoSync() > 0;
+				}
+
+			}
+		}
+
+		public async ValueTask<bool> DeleteSecretsWithNoAccess() {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				var result = new List<(long secretId, string name)>();
+				using (var cmd = new SqliteCommand("DELETE FROM [Secret] WHERE [Id] NOT IN (SELECT DISTINCT [SecretId] FROM [SecretAccess]);", conn)) {
+					return await cmd.ExecuteNonQueryAsync().NoSync() > 0;
+				}
+
+			}
+		}
+
+		public async ValueTask<List<(long secretId, string name)>> GetSecretsWithNoAccess() {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				var result = new List<(long secretId, string name)>();
+				using (var cmd = new SqliteCommand("SELECT [A].[Id], [A].[Name] FROM [Secret] [A] LEFT OUTER JOIN [SecretAccess] [B] ON [A].[Id] = [B].[SecretId] WHERE [B].[SecretId] IS NULL;", conn)) {
+					var reader = await cmd.ExecuteReaderAsync().NoSync();
+					await using (reader.NoSync()) {
+						while (await reader.ReadAsync().NoSync()) {
+							result.Add((reader.GetInt64(0), reader.GetString(1)));
 						}
 					}
 				}
 
-				return allRemoved ? true : (allFailed ? false : null);
+				return result;
+			}
+		}
+
+		private static byte[] GetBytes(SqliteDataReader reader, int ordinal) {
+			using (var s = reader.GetStream(ordinal)) {
+				if (s is MemoryStream ms) {
+					return ms.ToArray();
+				}
+				using (var s2 = new MemoryStream()) {
+					s.CopyTo(s2);
+					return s2.ToArray();
+				}
+			}
+		}
+
+		private static async Task<long?> GetNullableInt64(SqliteDataReader reader, int ordinal) {
+			if (await reader.IsDBNullAsync(ordinal).NoSync()) {
+				return null;
+			}
+			return reader.GetInt64(ordinal);
+		}
+
+		private static DateTime? FromNullableTimestamp(long? timestamp) {
+			if (!timestamp.HasValue) {
+				return null;
+			}
+			return CommonUtility.GetDateTimeFromTimestamp(timestamp.Value);
+		}
+
+		public async ValueTask<KeyVaultSecret> GetSecret(string name) {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				KeyVaultSecret result;
+				Dictionary<long, KeyVaultSecretAccess> access = new Dictionary<long, KeyVaultSecretAccess>();
+				using (var cmd = new SqliteCommand("SELECT [A].[Id], [A].[Name], [A].[Type], [A].[Value], [A].[IV], [A].[CreateData], [A].[CreatorUserId], [A].[LastUpdateDate], [A].[LastUpdateUserId] FROM [Secret] WHERE [A].[Name] = @name", conn)) {
+					var reader = await cmd.ExecuteReaderAsync().NoSync();
+					await using (reader.NoSync()) {
+						if (!await reader.ReadAsync().NoSync()) {
+							return null;
+						}
+
+						CommonUtility.TryParseEnum(reader.GetString(2), out KeyVaultSecretType secretType);
+						result = new KeyVaultSecret(reader.GetInt64(0), reader.GetString(1), secretType, GetBytes(reader, 3), GetBytes(reader, 4), CommonUtility.GetDateTimeFromTimestamp(reader.GetInt64(5)), reader.GetInt64(6), FromNullableTimestamp(await GetNullableInt64(reader, 7).NoSync()), await GetNullableInt64(reader, 8).NoSync(), access);
+					}
+				}
+
+				using (var cmd = new SqliteCommand("SELECT [A].[UserId], [A].[Read], [A].[Write], [A].[Assign] FROM [SecretAccess] WHERE [A].[SecretId] = @secretId", conn)) {
+					cmd.Parameters.AddWithValue("@secretId", result.Id);
+
+					var reader = await cmd.ExecuteReaderAsync().NoSync();
+					await using (reader.NoSync()) {
+						while (await reader.ReadAsync().NoSync()) {
+							var a = new KeyVaultSecretAccess(result, reader.GetInt64(0), reader.GetBoolean(1), reader.GetBoolean(2), reader.GetBoolean(3));
+							access.Add(a.UserId, a);
+						}
+					}
+				}
+
+				return result;
 			}
 		}
 

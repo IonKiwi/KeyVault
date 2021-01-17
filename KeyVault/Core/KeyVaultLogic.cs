@@ -5,7 +5,9 @@ using KeyVault.Utilities;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
+using System.IO;
 using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -196,6 +198,7 @@ namespace KeyVault.Core {
 			var userInfo = await _data.GetUserInformation(credentials.Value.usserId).NoSync();
 
 			List<Claim> claims = new List<Claim>();
+			claims.Add(new Claim(KeyVaultClaims.UserId, userInfo.Id.ToString(CultureInfo.InvariantCulture)));
 			claims.Add(new Claim(ClaimTypes.Name, userInfo.Name));
 			foreach (var role in userInfo.Roles) {
 				claims.Add(new Claim(ClaimTypes.Role, role));
@@ -232,6 +235,7 @@ namespace KeyVault.Core {
 			}
 
 			List<Claim> claims = new List<Claim>();
+			claims.Add(new Claim(KeyVaultClaims.UserId, userInfo.Id.ToString(CultureInfo.InvariantCulture)));
 			claims.Add(new Claim(ClaimTypes.Name, userInfo.Name));
 			foreach (var role in userInfo.Roles) {
 				claims.Add(new Claim(ClaimTypes.Role, role));
@@ -254,6 +258,46 @@ namespace KeyVault.Core {
 			public byte[] Salt { get; set; }
 			[JsonPropertyName("p")]
 			public byte[] Password { get; set; }
+		}
+
+		public async ValueTask<OperationResult<string>> GetSecret(ClaimsPrincipal user, string name) {
+
+			var secret = await _data.GetSecret(name).NoSync();
+			if (secret == null) {
+				return new OperationResult<string> { NotFound = true };
+			}
+
+			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
+			var isAdmin = user.IsInRole("Admin");
+			if (!isAdmin || !secret.Access.TryGetValue(userId, out var access) || !access.Read) {
+				return new OperationResult<string> { Unauthorized = true };
+			}
+
+			byte[] plainData;
+			using (var aes = GetAes()) {
+				aes.IV = secret.IV;
+				using (var output = new MemoryStream()) {
+					using (var input = new MemoryStream(secret.Value)) {
+						using (var crypto = new CryptoStream(input, aes.CreateDecryptor(), CryptoStreamMode.Read)) {
+							crypto.CopyTo(output);
+						}
+					}
+					plainData = output.ToArray();
+				}
+			}
+
+			string result;
+			if (secret.SecretType == KeyVaultSecretType.Text) {
+				result = Encoding.UTF8.GetString(plainData);
+			}
+			else if (secret.SecretType == KeyVaultSecretType.Blob) {
+				result = Convert.ToBase64String(plainData);
+			}
+			else {
+				throw new NotImplementedException(secret.SecretType.ToString());
+			}
+
+			return new OperationResult<string> { Result = result };
 		}
 	}
 }

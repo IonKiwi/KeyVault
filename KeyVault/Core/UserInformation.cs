@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace KeyVault.Data {
+namespace KeyVault.Core {
 	public sealed class UserInformation {
 		public UserInformation(long id, string name, IReadOnlySet<string> roles) {
 			Id = id;
