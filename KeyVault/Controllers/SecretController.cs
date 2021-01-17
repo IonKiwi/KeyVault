@@ -20,9 +20,9 @@ namespace KeyVault.Controllers {
 			_logger = logger;
 		}
 
-		[HttpGet("{userId:long}")]
-		public async ValueTask<IActionResult> Get([FromServices] KeyVaultLogic keyVault, string name) {
-			var secret = await keyVault.GetSecret(HttpContext.User, name);
+		[HttpGet("{secretName}")]
+		public async ValueTask<IActionResult> Get([FromServices] KeyVaultLogic keyVault, string secretName) {
+			var secret = await keyVault.GetSecret(HttpContext.User, secretName);
 			if (secret.NotFound) {
 				return NotFound();
 			}
@@ -30,6 +30,31 @@ namespace KeyVault.Controllers {
 				return Unauthorized();
 			}
 			return new ObjectResult(secret.Result);
+		}
+
+		[HttpPost]
+		public ValueTask<OperationResult<long>> Post([FromServices] KeyVaultLogic keyVault, [FromBody] NewSecret newSecret) {
+			return keyVault.NewSecret(HttpContext.User, newSecret);
+		}
+
+		[HttpPut("{secretName}")]
+		public ValueTask<OperationResult<long>> Update([FromServices] KeyVaultLogic keyVault, string secretName, [FromBody] NewSecretData data) {
+			return keyVault.UpdateSecret(HttpContext.User, secretName, data);
+		}
+
+		[HttpDelete("{secretName}")]
+		public ValueTask<OperationResult<bool>> Delete([FromServices] KeyVaultLogic keyVault, string secretName) {
+			return keyVault.DeleteSecret(HttpContext.User, secretName);
+		}
+
+		[HttpGet("NoAccess")]
+		public ValueTask<OperationResult<List<(long secretId, string name)>>> NoAccess([FromServices] KeyVaultLogic keyVault) {
+			return keyVault.GetSecretsWithNoAccess(HttpContext.User);
+		}
+
+		[HttpDelete("NoAccess")]
+		public ValueTask<OperationResult<bool>> DeleteNoAccess([FromServices] KeyVaultLogic keyVault) {
+			return keyVault.DeleteSecretsWithNoAccess(HttpContext.User);
 		}
 	}
 }

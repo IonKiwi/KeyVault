@@ -50,6 +50,32 @@ namespace KeyVault.Core {
 			return new OperationResult<long> { Result = userId };
 		}
 
+		public async ValueTask<OperationResult<bool>> UpdateUser(ClaimsPrincipal user, long userId, NewUser newUser) {
+
+			if (newUser == null) {
+				return new OperationResult<bool> { ValidationFailed = true, ValidationMessage = "No data" };
+			}
+			else if (!(user.IsInRole("UserManagement") || user.IsInRole("Admin"))) {
+				return new OperationResult<bool> { Unauthorized = true };
+			}
+			else if (string.IsNullOrEmpty(newUser.Name)) {
+				return new OperationResult<bool> { ValidationFailed = true, ValidationMessage = "[Name] is required" };
+			}
+
+			var result = await _data.UpdateUser(userId, newUser).NoSync();
+			return new OperationResult<bool> { Result = result };
+		}
+
+		public async ValueTask<OperationResult<bool>> DeleteUser(ClaimsPrincipal user, long userId) {
+
+			if (!(user.IsInRole("UserManagement") || user.IsInRole("Admin"))) {
+				return new OperationResult<bool> { Unauthorized = true };
+			}
+
+			var result = await _data.DeleteUser(userId).NoSync();
+			return new OperationResult<bool> { Result = result };
+		}
+
 		public async ValueTask<OperationResult<UserData>> GetUser(ClaimsPrincipal user, long userId) {
 
 			if (!(user.IsInRole("UserManagement") || user.IsInRole("Admin"))) {
@@ -298,6 +324,172 @@ namespace KeyVault.Core {
 			}
 
 			return new OperationResult<string> { Result = result };
+		}
+
+		public async ValueTask<OperationResult<long>> NewSecret(ClaimsPrincipal user, NewSecret newSecret) {
+
+			if (newSecret == null) {
+				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "No data" };
+			}
+			else if (!(user.IsInRole("CreateSecret") || user.IsInRole("Admin"))) {
+				return new OperationResult<long> { Unauthorized = true };
+			}
+			else if (string.IsNullOrEmpty(newSecret.Name)) {
+				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "[Name] is required" };
+			}
+			else if (string.IsNullOrEmpty(newSecret.SecretType)) {
+				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "[SecretType] is required" };
+			}
+			else if (string.IsNullOrEmpty(newSecret.Value)) {
+				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "[Value] is required" };
+			}
+
+			if (!CommonUtility.TryParseEnum(newSecret.SecretType, out KeyVaultSecretType secretType)) {
+				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "Invalid [SecretType]" };
+			}
+
+			byte[] plainData;
+			if (secretType == KeyVaultSecretType.Text) {
+				plainData = Encoding.UTF8.GetBytes(newSecret.Value);
+			}
+			else if (secretType == KeyVaultSecretType.Blob) {
+				try {
+					plainData = Convert.FromBase64String(newSecret.Value);
+				}
+				catch (Exception ex) {
+					return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "Invalid [Value] for specified [SecretType]" };
+				}
+			}
+			else {
+				throw new NotImplementedException(secretType.ToString());
+			}
+
+			var secret = await _data.GetSecret(newSecret.Name).NoSync();
+			if (secret != null) {
+				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "Secret with specified [Name] already exists" };
+			}
+
+			byte[] secretData;
+			byte[] iv;
+			using (var aes = GetAes()) {
+				iv = aes.IV;
+				using (var output = new MemoryStream()) {
+					using (var crypto = new CryptoStream(output, aes.CreateEncryptor(), CryptoStreamMode.Write)) {
+						crypto.Write(plainData);
+					}
+					secretData = output.ToArray();
+				}
+			}
+
+			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
+			long secretId = await _data.CreateSecret(userId, newSecret.Name, secretType, secretData, iv);
+			return new OperationResult<long> { Result = secretId };
+		}
+
+		public async ValueTask<OperationResult<long>> UpdateSecret(ClaimsPrincipal user, string secretName, NewSecretData data) {
+
+			if (data == null) {
+				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "No data" };
+			}
+			else if (string.IsNullOrEmpty(secretName)) {
+				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "[Name] is required" };
+			}
+			else if (string.IsNullOrEmpty(data.SecretType)) {
+				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "[SecretType] is required" };
+			}
+			else if (string.IsNullOrEmpty(data.Value)) {
+				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "[Value] is required" };
+			}
+
+			if (!CommonUtility.TryParseEnum(data.SecretType, out KeyVaultSecretType secretType)) {
+				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "Invalid [SecretType]" };
+			}
+
+			byte[] plainData;
+			if (secretType == KeyVaultSecretType.Text) {
+				plainData = Encoding.UTF8.GetBytes(data.Value);
+			}
+			else if (secretType == KeyVaultSecretType.Blob) {
+				try {
+					plainData = Convert.FromBase64String(data.Value);
+				}
+				catch (Exception ex) {
+					return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "Invalid [Value] for specified [SecretType]" };
+				}
+			}
+			else {
+				throw new NotImplementedException(secretType.ToString());
+			}
+
+			var secret = await _data.GetSecret(secretName).NoSync();
+			if (secret != null) {
+				return new OperationResult<long> { NotFound = true };
+			}
+
+			// check access
+			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
+			bool isAdmin = user.IsInRole("Admin");
+			if (!isAdmin || !secret.Access.TryGetValue(userId, out var access) || !access.Write) {
+				return new OperationResult<long> { Unauthorized = true };
+			}
+
+			byte[] secretData;
+			byte[] iv;
+			using (var aes = GetAes()) {
+				iv = aes.IV;
+				using (var output = new MemoryStream()) {
+					using (var crypto = new CryptoStream(output, aes.CreateEncryptor(), CryptoStreamMode.Write)) {
+						crypto.Write(plainData);
+					}
+					secretData = output.ToArray();
+				}
+			}
+
+
+			long secretId = await _data.UpdateSecret(userId, secretName, secretType, secretData, iv);
+			return new OperationResult<long> { Result = secretId };
+		}
+
+		public async ValueTask<OperationResult<bool>> DeleteSecret(ClaimsPrincipal user, string name) {
+
+			if (string.IsNullOrEmpty(name)) {
+				return new OperationResult<bool> { ValidationFailed = true, ValidationMessage = "[Name] is required" };
+			}
+
+			var secret = await _data.GetSecret(name).NoSync();
+			if (secret != null) {
+				return new OperationResult<bool> { NotFound = true };
+			}
+
+			// check access
+			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
+			bool isAdmin = user.IsInRole("Admin");
+			if (!isAdmin || !secret.Access.TryGetValue(userId, out var access) || !access.Write) {
+				return new OperationResult<bool> { Unauthorized = true };
+			}
+
+			var result = await _data.DeleteSecret(userId, name).NoSync();
+			return new OperationResult<bool> { Result = result };
+		}
+
+		public async ValueTask<OperationResult<List<(long secretId, string name)>>> GetSecretsWithNoAccess(ClaimsPrincipal user) {
+
+			if (!user.IsInRole("Admin")) {
+				return new OperationResult<List<(long secretId, string name)>> { Unauthorized = true };
+			}
+
+			var result = await _data.GetSecretsWithNoAccess().NoSync();
+			return new OperationResult<List<(long secretId, string name)>> { Result = result };
+		}
+
+		public async ValueTask<OperationResult<bool>> DeleteSecretsWithNoAccess(ClaimsPrincipal user) {
+
+			if (!user.IsInRole("Admin")) {
+				return new OperationResult<bool> { Unauthorized = true };
+			}
+
+			var result = await _data.DeleteSecretsWithNoAccess().NoSync();
+			return new OperationResult<bool> { Result = result };
 		}
 	}
 }

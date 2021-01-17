@@ -26,8 +26,18 @@ namespace KeyVault.Controllers {
 		}
 
 		[HttpPost]
-		public ValueTask<OperationResult<long>> Post([FromServices] KeyVaultLogic keyVault, [FromBody] NewUser newUser) {
+		public ValueTask<OperationResult<long>> Create([FromServices] KeyVaultLogic keyVault, [FromBody] NewUser newUser) {
 			return keyVault.AddUser(HttpContext.User, newUser);
+		}
+
+		[HttpPut("{userId:long}")]
+		public ValueTask<OperationResult<bool>> Update([FromServices] KeyVaultLogic keyVault, long userId, [FromBody] NewUser newUser) {
+			return keyVault.UpdateUser(HttpContext.User, userId, newUser);
+		}
+
+		[HttpDelete("{userId:long}")]
+		public ValueTask<OperationResult<bool>> Delete([FromServices] KeyVaultLogic keyVault, long userId) {
+			return keyVault.DeleteUser(HttpContext.User, userId);
 		}
 
 		[HttpGet("{userId:long}/role")]

@@ -21,7 +21,7 @@ namespace KeyVault.Data {
 			using (var conn = new SqliteConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();
 
-				using (var cmd = new SqliteCommand("CREATE TABLE [User] ([Id] INTEGER PRIMARY KEY AUTOINCREMENT, [Name] TEXT NOT NULL);", conn)) {
+				using (var cmd = new SqliteCommand("CREATE TABLE [User] ([Id] INTEGER PRIMARY KEY AUTOINCREMENT, [Name] TEXT NOT NULL, UNIQUE([Name]) ON CONFLICT FAIL);", conn)) {
 					await cmd.ExecuteNonQueryAsync().NoSync();
 				}
 
@@ -41,7 +41,7 @@ namespace KeyVault.Data {
 					await cmd.ExecuteNonQueryAsync().NoSync();
 				}
 
-				using (var cmd = new SqliteCommand("CREATE TABLE [Secret] ([Id] INTEGER PRIMARY KEY AUTOINCREMENT, [Name] TEXT NOT NULL, [Type] TEXT NOT NULL, [Value] BINARY NOT NULL, [IV] BINARY NOT NULL, [CreateDate] DATETIME NOT NULL, [CreatorUserId] INTEGER NULL, [LastUpdateDate] DATETIME NULL, [LastUpdateUserId] INTEGER NULL, FOREIGN KEY (CreatorUserId) REFERENCES [User](Id) ON DELETE SET NULL ON UPDATE CASCADE, FOREIGN KEY (LastUpdateUserId) REFERENCES [User](Id) ON DELETE SET NULL ON UPDATE CASCADE, UNIQUE([Name]));", conn)) {
+				using (var cmd = new SqliteCommand("CREATE TABLE [Secret] ([Id] INTEGER PRIMARY KEY AUTOINCREMENT, [Name] TEXT NOT NULL, [Type] TEXT NOT NULL, [Value] BINARY NOT NULL, [IV] BINARY NOT NULL, [CreateDate] DATETIME NOT NULL, [CreatorUserId] INTEGER NULL, [LastUpdateDate] DATETIME NULL, [LastUpdateUserId] INTEGER NULL, FOREIGN KEY (CreatorUserId) REFERENCES [User](Id) ON DELETE SET NULL ON UPDATE CASCADE, FOREIGN KEY (LastUpdateUserId) REFERENCES [User](Id) ON DELETE SET NULL ON UPDATE CASCADE, UNIQUE([Name]) ON CONFLICT FAIL);", conn)) {
 					await cmd.ExecuteNonQueryAsync().NoSync();
 				}
 
@@ -137,6 +137,29 @@ namespace KeyVault.Data {
 			}
 		}
 
+		public async ValueTask<bool> UpdateUser(long userId, NewUser newUser) {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				using (var cmd = new SqliteCommand("UPDATE [User] SET [Name] = @name WHERE [Id] = @userId", conn)) {
+					cmd.Parameters.AddWithValue("@userId", userId);
+					cmd.Parameters.AddWithValue("@name", newUser.Name);
+					return await cmd.ExecuteNonQueryAsync().NoSync() > 0;
+				}
+			}
+		}
+
+		public async ValueTask<bool> DeleteUser(long userId) {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				using (var cmd = new SqliteCommand("DELETE FROM [User] WHERE [Id] = @userId", conn)) {
+					cmd.Parameters.AddWithValue("@userId", userId);
+					return await cmd.ExecuteNonQueryAsync().NoSync() > 0;
+				}
+			}
+		}
+
 		public async ValueTask ReplaceUserRoles(long userId, string[] roles) {
 			using (var conn = new SqliteConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();
@@ -211,7 +234,7 @@ namespace KeyVault.Data {
 			}
 		}
 
-		public async ValueTask<long> CreateSecret(long userId, string name, byte[] value, byte[] iv) {
+		public async ValueTask<long> CreateSecret(long userId, string name, KeyVaultSecretType type, byte[] value, byte[] iv) {
 			using (var conn = new SqliteConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();
 
@@ -219,9 +242,10 @@ namespace KeyVault.Data {
 				await using (transaction.NoSync()) {
 
 					long secretId;
-					using (var cmd = new SqliteCommand("INSERT INTO [Secret] ([Name], [Value], [IV], [CreateDate], CreatorUserId]) VALUES (@name, @value, @iv, @createDate, @creatorUserId); SELECT last_insert_rowid();", conn, transaction)) {
+					using (var cmd = new SqliteCommand("INSERT INTO [Secret] ([Name], [Value], [Type], [IV], [CreateDate], CreatorUserId]) VALUES (@name, @value, @iv, @createDate, @creatorUserId); SELECT last_insert_rowid();", conn, transaction)) {
 						cmd.Parameters.AddWithValue("@name", name);
 						cmd.Parameters.AddWithValue("@value", value);
+						cmd.Parameters.AddWithValue("@type", type.ToString());
 						cmd.Parameters.AddWithValue("@iv", iv);
 						cmd.Parameters.AddWithValue("@createDate", CommonUtility.GetTimestamp());
 						cmd.Parameters.AddWithValue("@creatorUserId", userId);
@@ -243,14 +267,15 @@ namespace KeyVault.Data {
 			}
 		}
 
-		public async ValueTask<long> UpdateSecret(long userId, string name, byte[] value, byte[] iv) {
+		public async ValueTask<long> UpdateSecret(long userId, string name, KeyVaultSecretType type, byte[] value, byte[] iv) {
 			using (var conn = new SqliteConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();
 
 				long secretId;
-				using (var cmd = new SqliteCommand("UPDATE [Secret] SET [Value] = @value, [IV] = @iv, [LastUpdateDate] = @lastUpdateData, [LastUpdateUserId] = @lastUpdateUserId WHERE [Name] = @name; SELECT [Id] FROM [Secret] WHERE [Name] = @name;", conn)) {
+				using (var cmd = new SqliteCommand("UPDATE [Secret] SET [Value] = @value, [Type] = @type, [IV] = @iv, [LastUpdateDate] = @lastUpdateData, [LastUpdateUserId] = @lastUpdateUserId WHERE [Name] = @name; SELECT [Id] FROM [Secret] WHERE [Name] = @name;", conn)) {
 					cmd.Parameters.AddWithValue("@name", name);
 					cmd.Parameters.AddWithValue("@value", value);
+					cmd.Parameters.AddWithValue("@type", type.ToString());
 					cmd.Parameters.AddWithValue("@iv", iv);
 					cmd.Parameters.AddWithValue("@lastUpdateData", CommonUtility.GetTimestamp());
 					cmd.Parameters.AddWithValue("@lastUpdateUserId", userId);
