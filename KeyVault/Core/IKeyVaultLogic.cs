@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace KeyVault.Core {
 	public interface IKeyVaultLogic {
+		ValueTask Create();
 		ValueTask<OperationResult<long>> AddUser(ClaimsPrincipal user, NewUser newUser);
 		ValueTask<(bool success, string token)> AuthenticateBasic(string user, string password);
 		ValueTask<(bool success, string token)> AuthenticateWindows(ClaimsPrincipal user);

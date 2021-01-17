@@ -21,6 +21,26 @@ namespace KeyVault.Data {
 			using (var conn = new SqliteConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();
 
+				using (var cmd = new SqliteCommand("DROP TABLE [SecretAccess];", conn)) {
+					await cmd.ExecuteNonQueryAsync().NoSync();
+				}
+
+				using (var cmd = new SqliteCommand("DROP TABLE [Secret];", conn)) {
+					await cmd.ExecuteNonQueryAsync().NoSync();
+				}
+
+				using (var cmd = new SqliteCommand("DROP TABLE [UserCredential];", conn)) {
+					await cmd.ExecuteNonQueryAsync().NoSync();
+				}
+
+				using (var cmd = new SqliteCommand("DROP TABLE [UserRole];", conn)) {
+					await cmd.ExecuteNonQueryAsync().NoSync();
+				}
+
+				using (var cmd = new SqliteCommand("DROP TABLE [User];", conn)) {
+					await cmd.ExecuteNonQueryAsync().NoSync();
+				}
+
 				using (var cmd = new SqliteCommand("CREATE TABLE [User] ([Id] INTEGER PRIMARY KEY AUTOINCREMENT, [Name] TEXT NOT NULL, UNIQUE([Name]) ON CONFLICT FAIL);", conn)) {
 					await cmd.ExecuteNonQueryAsync().NoSync();
 				}
@@ -57,15 +77,21 @@ namespace KeyVault.Data {
 					await cmd.ExecuteNonQueryAsync().NoSync();
 				}
 
-				// INSERT INTO [User] ([Name]) Values ('admin')
-				// INSERT INTO [UserCredential] ([UserId], [Type], [Identifier], [Value]) VALUES (1, 'BasicPlainText', 'admin', 'admin')
+				// admin user with plain text password [remove after first setup]
+
+				using (var cmd = new SqliteCommand("INSERT INTO [User] ([Name]) Values ('admin');", conn)) {
+					await cmd.ExecuteNonQueryAsync().NoSync();
+				}
+
+				using (var cmd = new SqliteCommand("INSERT INTO [UserCredential] ([UserId], [Type], [Identifier], [Value]) VALUES (1, 'BasicPlainText', 'admin', 'admin');", conn)) {
+					await cmd.ExecuteNonQueryAsync().NoSync();
+				}
+
+				using (var cmd = new SqliteCommand("INSERT INTO [UserRole] ([UserId], [Role]) Values (1, 'Admin');", conn)) {
+					await cmd.ExecuteNonQueryAsync().NoSync();
+				}
+
 				// INSERT INTO [UserCredential] ([UserId], [Type], [Identifier]) VALUES (1, 'Windows', 'domain\user')
-				// INSERT INTO [UserRole] ([UserId], [Role]) Values (1, 'Admin')
-				//DROP TABLE[SecretAccess];
-				//DROP TABLE[Secret];
-				//DROP TABLE[UserCredential];
-				//DROP TABLE[UserRole];
-				//DROP TABLE[User];
 			}
 		}
 

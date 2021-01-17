@@ -35,6 +35,10 @@ namespace KeyVault.Core {
 			}
 		}
 
+		public ValueTask Create() {
+			return _data.Create();
+		}
+
 		public async ValueTask<OperationResult<long>> AddUser(ClaimsPrincipal user, NewUser newUser) {
 
 			if (newUser == null) {

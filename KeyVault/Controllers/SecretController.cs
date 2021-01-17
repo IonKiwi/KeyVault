@@ -1,7 +1,9 @@
 ﻿using KeyVault.Core;
 using KeyVault.Data;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -18,6 +20,16 @@ namespace KeyVault.Controllers {
 
 		public SecretController(ILogger<SecretController> logger) {
 			_logger = logger;
+		}
+
+		[HttpGet("create")]
+		[AllowAnonymous]
+		public async ValueTask<IActionResult> Create([FromServices] IWebHostEnvironment environment, [FromServices] IKeyVaultLogic keyVault) {
+			if (!environment.IsDevelopment()) {
+				throw new InvalidOperationException();
+			}
+			await keyVault.Create();
+			return Ok();
 		}
 
 		[HttpGet("{secretName}")]
