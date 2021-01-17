@@ -94,6 +94,50 @@ namespace KeyVault.Data {
 			}
 		}
 
+		public async ValueTask<List<(long credentialId, string type, string identifier)>> GetUserCredentials(long userId) {
+
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				using (var cmd = new SqliteCommand("SELECT [Id], [Type], [Identifier] FROM [UserCredential] WHERE [UserId] = @userId;", conn)) {
+					cmd.Parameters.AddWithValue("@userId", userId);
+					var reader = await cmd.ExecuteReaderAsync().NoSync();
+					await using (reader.NoSync()) {
+						var result = new List<(long credentialId, string type, string identifier)>();
+						while (await reader.ReadAsync().NoSync()) {
+							result.Add((reader.GetInt64(0), reader.GetString(1), reader.GetString(20)));
+						}
+						return result;
+					}
+				}
+			}
+		}
+
+		public async ValueTask<bool> DeleteCredential(long credentialId) {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				using (var cmd = new SqliteCommand("DELETE FROM [UserCredential] WHERE [Id] = @credentialId", conn)) {
+					cmd.Parameters.AddWithValue("@credentialId", credentialId);
+					return await cmd.ExecuteNonQueryAsync().NoSync() > 0;
+				}
+			}
+		}
+
+		public async ValueTask<long> AddCredential(long userId, string type, string identifier, string value) {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				using (var cmd = new SqliteCommand("INSERT INTO [UserCredential] ([UserId], [Type], [Identifier], [Value]) VALUES (@userId, @type, @identifier, @value)", conn)) {
+					cmd.Parameters.AddWithValue("@userId", userId);
+					cmd.Parameters.AddWithValue("@type", type);
+					cmd.Parameters.AddWithValue("@identifier", identifier);
+					cmd.Parameters.AddWithValue("@value", value);
+					return (long)await cmd.ExecuteScalarAsync().NoSync();
+				}
+			}
+		}
+
 		public async ValueTask<UserInformation> GetUserInformation(long userId) {
 			using (var conn = new SqliteConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();

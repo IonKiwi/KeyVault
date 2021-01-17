@@ -492,5 +492,97 @@ namespace KeyVault.Core {
 			var result = await _data.DeleteSecretsWithNoAccess().NoSync();
 			return new OperationResult<bool> { Result = result };
 		}
+
+		public async ValueTask<OperationResult<List<(long credentialId, string credentialType, string identifier)>>> GetCredentials(ClaimsPrincipal user, long userId) {
+
+			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
+				return new OperationResult<List<(long credentialId, string credentialType, string identifier)>> { Unauthorized = true };
+			}
+
+			var userInfo = await _data.GetUserInformation(userId).NoSync();
+			if (userInfo == null) {
+				return new OperationResult<List<(long credentialId, string credentialType, string identifier)>> { NotFound = true };
+			}
+
+			var credentials = await _data.GetUserCredentials(userId).NoSync();
+			return new OperationResult<List<(long credentialId, string credentialType, string identifier)>> { Result = credentials };
+		}
+
+		public async ValueTask<OperationResult<bool>> DeleteCredential(ClaimsPrincipal user, long userId, long credentialId) {
+
+			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
+				return new OperationResult<bool> { Unauthorized = true };
+			}
+
+			var userInfo = await _data.GetUserInformation(userId).NoSync();
+			if (userInfo == null) {
+				return new OperationResult<bool> { NotFound = true };
+			}
+
+			var credentials = await _data.GetUserCredentials(userId).NoSync();
+			var index = credentials.FirstIndexOrNull(z => z.credentialId == credentialId);
+			if (!index.HasValue) {
+				return new OperationResult<bool> { NotFound = true };
+			}
+
+			var result = await _data.DeleteCredential(credentialId).NoSync();
+			return new OperationResult<bool> { Result = result };
+		}
+
+		public async ValueTask<OperationResult<long>> AddWindowsCredential(ClaimsPrincipal user, long userId, string account) {
+			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
+				return new OperationResult<long> { Unauthorized = true };
+			}
+
+			var userInfo = await _data.GetUserInformation(userId).NoSync();
+			if (userInfo == null) {
+				return new OperationResult<long> { NotFound = true };
+			}
+
+			var credentials = await _data.GetUserCredentials(userId).NoSync();
+			var index = credentials.FirstIndexOrNull(z => z.type == KeyVaultCredentialType.Windows && string.Equals(z.identifier, account, StringComparison.OrdinalIgnoreCase));
+			if (index.HasValue) {
+				return new OperationResult<long> { Conflict = true };
+			}
+
+			var result = await _data.AddCredential(userId, KeyVaultCredentialType.Windows, account, null);
+			return new OperationResult<long> { Result = result };
+		}
+
+		public async ValueTask<OperationResult<long>> AddBasicCredential(ClaimsPrincipal user, long userId, string username, string password) {
+			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
+				return new OperationResult<long> { Unauthorized = true };
+			}
+
+			var userInfo = await _data.GetUserInformation(userId).NoSync();
+			if (userInfo == null) {
+				return new OperationResult<long> { NotFound = true };
+			}
+
+			var credentials = await _data.GetUserCredentials(userId).NoSync();
+			var index = credentials.FirstIndexOrNull(z => z.type == KeyVaultCredentialType.Basic && string.Equals(z.identifier, username, StringComparison.OrdinalIgnoreCase));
+			if (index.HasValue) {
+				return new OperationResult<long> { Conflict = true };
+			}
+
+			byte[] iv, data;
+			using (var aes = GetAes()) {
+				iv = aes.IV;
+				using (var output = new MemoryStream()) {
+					using (var crypto = new CryptoStream(output, aes.CreateEncryptor(), CryptoStreamMode.Write)) {
+						crypto.Write(Encoding.UTF8.GetBytes(password));
+					}
+					data = output.ToArray();
+				}
+			}
+
+			var credential = new BasicCredential {
+				Password = data,
+				Salt = iv
+			};
+
+			var result = await _data.AddCredential(userId, KeyVaultCredentialType.Basic, username, JsonSerializer.Serialize(credential));
+			return new OperationResult<long> { Result = result };
+		}
 	}
 }

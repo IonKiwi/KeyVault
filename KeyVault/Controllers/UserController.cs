@@ -46,6 +46,34 @@ namespace KeyVault.Controllers {
 			return result;
 		}
 
+		[HttpGet("{userId:long}/credential")]
+		public async ValueTask<OperationResult<List<(long credentialId, string credentialType, string identifier)>>> Credentials([FromServices] IKeyVaultLogic keyVault, long userId) {
+			var result = await keyVault.GetCredentials(HttpContext.User, userId);
+			SetStatusCode(result);
+			return result;
+		}
+
+		[HttpDelete("{userId:long}/credential/{credentialId:long}")]
+		public async ValueTask<OperationResult<bool>> Credentials([FromServices] IKeyVaultLogic keyVault, long userId, long credentialId) {
+			var result = await keyVault.DeleteCredential(HttpContext.User, userId, credentialId);
+			SetStatusCode(result);
+			return result;
+		}
+
+		[HttpPut("{userId:long}/credential/windows")]
+		public async ValueTask<OperationResult<long>> AddWindowsCredential([FromServices] IKeyVaultLogic keyVault, long userId, [FromBody] WindowsCredentialData data) {
+			var result = await keyVault.AddWindowsCredential(HttpContext.User, userId, data.Account);
+			SetStatusCode(result);
+			return result;
+		}
+
+		[HttpPut("{userId:long}/credential/basic")]
+		public async ValueTask<OperationResult<long>> AddBasicCredential([FromServices] IKeyVaultLogic keyVault, long userId, [FromBody] BasicCredentialData data) {
+			var result = await keyVault.AddBasicCredential(HttpContext.User, userId, data.Username, data.Password);
+			SetStatusCode(result);
+			return result;
+		}
+
 		[HttpGet("{userId:long}/role")]
 		public async ValueTask<OperationResult<string[]>> Roles([FromServices] IKeyVaultLogic keyVault, long userId) {
 			var result = await keyVault.GetUserRoles(HttpContext.User, userId);

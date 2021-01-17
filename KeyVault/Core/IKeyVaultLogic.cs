@@ -24,5 +24,9 @@ namespace KeyVault.Core {
 		ValueTask<OperationResult<string[]>> ReplaceUserRoles(ClaimsPrincipal user, long userId, string[] roles);
 		ValueTask<OperationResult<long>> UpdateSecret(ClaimsPrincipal user, string secretName, NewSecretData data);
 		ValueTask<OperationResult<bool>> UpdateUser(ClaimsPrincipal user, long userId, NewUser newUser);
+		ValueTask<OperationResult<List<(long credentialId, string credentialType, string identifier)>>> GetCredentials(ClaimsPrincipal user, long userId);
+		ValueTask<OperationResult<bool>> DeleteCredential(ClaimsPrincipal user, long userId, long credentialId);
+		ValueTask<OperationResult<long>> AddWindowsCredential(ClaimsPrincipal user, long userId, string account);
+		ValueTask<OperationResult<long>> AddBasicCredential(ClaimsPrincipal user, long userId, string username, string password);
 	}
 }

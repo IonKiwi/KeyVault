@@ -10,6 +10,9 @@ namespace KeyVault.Data {
 
 		ValueTask<UserInformation> GetUserInformation(long userId);
 		ValueTask<(long usserId, string value)?> GetUserCredential(string type, string identifier);
+		ValueTask<List<(long credentialId, string type, string identifier)>> GetUserCredentials(long userId);
+		ValueTask<bool> DeleteCredential(long credentialId);
+		ValueTask<long> AddCredential(long userId, string type, string identifier, string value);
 		ValueTask<long> AddUser(NewUser user);
 		ValueTask<bool> UpdateUser(long userId, NewUser newUser);
 		ValueTask<bool> DeleteUser(long userId);
