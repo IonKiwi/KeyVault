@@ -97,9 +97,9 @@ namespace KeyVault.Controllers {
 			return result;
 		}
 
-		[HttpPost("{secretName}/access/{userId:long}")]
-		public async ValueTask<OperationResult<CompletedResult>> AddAccess([FromServices] IKeyVaultLogic keyVault, string secretName, long userId, [FromBody] NewAccessData data) {
-			var result = await keyVault.AddSecretAccess(HttpContext.User, secretName, userId, data);
+		[HttpPost("{secretName}/access")]
+		public async ValueTask<OperationResult<CompletedResult>> AddAccess([FromServices] IKeyVaultLogic keyVault, string secretName, [FromBody] NewAccess data) {
+			var result = await keyVault.AddSecretAccess(HttpContext.User, secretName, data.UserId, data);
 			SetStatusCode(result);
 			return result;
 		}
