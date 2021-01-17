@@ -60,7 +60,12 @@ namespace KeyVault.Data {
 				// INSERT INTO [User] ([Name]) Values ('admin')
 				// INSERT INTO [UserCredential] ([UserId], [Type], [Identifier], [Value]) VALUES (1, 'BasicPlainText', 'admin', 'admin')
 				// INSERT INTO [UserCredential] ([UserId], [Type], [Identifier]) VALUES (1, 'Windows', 'domain\user')
-				// insert into [UserRole] ([UserId], [Role]) Values (1, 'Admin')
+				// INSERT INTO [UserRole] ([UserId], [Role]) Values (1, 'Admin')
+				//DROP TABLE[SecretAccess];
+				//DROP TABLE[Secret];
+				//DROP TABLE[UserCredential];
+				//DROP TABLE[UserRole];
+				//DROP TABLE[User];
 			}
 		}
 

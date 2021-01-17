@@ -366,7 +366,7 @@ namespace KeyVault.Core {
 
 			var secret = await _data.GetSecret(newSecret.Name).NoSync();
 			if (secret != null) {
-				return new OperationResult<long> { ValidationFailed = true, ValidationMessage = "Secret with specified [Name] already exists" };
+				return new OperationResult<long> { Conflict = true };
 			}
 
 			byte[] secretData;

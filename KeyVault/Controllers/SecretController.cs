@@ -12,7 +12,7 @@ namespace KeyVault.Controllers {
 	[ApiController]
 	[Route("[controller]")]
 	[Authorize]
-	public class SecretController : ControllerBase {
+	public class SecretController : KeyVaultControllerBase {
 
 		private readonly ILogger<SecretController> _logger;
 
@@ -33,28 +33,38 @@ namespace KeyVault.Controllers {
 		}
 
 		[HttpPost]
-		public ValueTask<OperationResult<long>> Post([FromServices] KeyVaultLogic keyVault, [FromBody] NewSecret newSecret) {
-			return keyVault.NewSecret(HttpContext.User, newSecret);
+		public async ValueTask<OperationResult<long>> Post([FromServices] KeyVaultLogic keyVault, [FromBody] NewSecret newSecret) {
+			var result = await keyVault.NewSecret(HttpContext.User, newSecret);
+			SetStatusCode(result);
+			return result;
 		}
 
 		[HttpPut("{secretName}")]
-		public ValueTask<OperationResult<long>> Update([FromServices] KeyVaultLogic keyVault, string secretName, [FromBody] NewSecretData data) {
-			return keyVault.UpdateSecret(HttpContext.User, secretName, data);
+		public async ValueTask<OperationResult<long>> Update([FromServices] KeyVaultLogic keyVault, string secretName, [FromBody] NewSecretData data) {
+			var result = await keyVault.UpdateSecret(HttpContext.User, secretName, data);
+			SetStatusCode(result);
+			return result;
 		}
 
 		[HttpDelete("{secretName}")]
-		public ValueTask<OperationResult<bool>> Delete([FromServices] KeyVaultLogic keyVault, string secretName) {
-			return keyVault.DeleteSecret(HttpContext.User, secretName);
+		public async ValueTask<OperationResult<bool>> Delete([FromServices] KeyVaultLogic keyVault, string secretName) {
+			var result = await keyVault.DeleteSecret(HttpContext.User, secretName);
+			SetStatusCode(result);
+			return result;
 		}
 
 		[HttpGet("NoAccess")]
-		public ValueTask<OperationResult<List<(long secretId, string name)>>> NoAccess([FromServices] KeyVaultLogic keyVault) {
-			return keyVault.GetSecretsWithNoAccess(HttpContext.User);
+		public async ValueTask<OperationResult<List<(long secretId, string name)>>> NoAccess([FromServices] KeyVaultLogic keyVault) {
+			var result = await keyVault.GetSecretsWithNoAccess(HttpContext.User);
+			SetStatusCode(result);
+			return result;
 		}
 
 		[HttpDelete("NoAccess")]
-		public ValueTask<OperationResult<bool>> DeleteNoAccess([FromServices] KeyVaultLogic keyVault) {
-			return keyVault.DeleteSecretsWithNoAccess(HttpContext.User);
+		public async ValueTask<OperationResult<bool>> DeleteNoAccess([FromServices] KeyVaultLogic keyVault) {
+			var result = await keyVault.DeleteSecretsWithNoAccess(HttpContext.User);
+			SetStatusCode(result);
+			return result;
 		}
 	}
 }

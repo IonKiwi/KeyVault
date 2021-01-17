@@ -12,7 +12,7 @@ namespace KeyVault.Controllers {
 	[ApiController]
 	[Route("[controller]")]
 	[Authorize]
-	public class UserController : ControllerBase {
+	public class UserController : KeyVaultControllerBase {
 
 		private readonly ILogger<UserController> _logger;
 
@@ -26,38 +26,52 @@ namespace KeyVault.Controllers {
 		}
 
 		[HttpPost]
-		public ValueTask<OperationResult<long>> Create([FromServices] KeyVaultLogic keyVault, [FromBody] NewUser newUser) {
-			return keyVault.AddUser(HttpContext.User, newUser);
+		public async ValueTask<OperationResult<long>> Create([FromServices] KeyVaultLogic keyVault, [FromBody] NewUser newUser) {
+			var result = await keyVault.AddUser(HttpContext.User, newUser);
+			SetStatusCode(result);
+			return result;
 		}
 
 		[HttpPut("{userId:long}")]
-		public ValueTask<OperationResult<bool>> Update([FromServices] KeyVaultLogic keyVault, long userId, [FromBody] NewUser newUser) {
-			return keyVault.UpdateUser(HttpContext.User, userId, newUser);
+		public async ValueTask<OperationResult<bool>> Update([FromServices] KeyVaultLogic keyVault, long userId, [FromBody] NewUser newUser) {
+			var result = await keyVault.UpdateUser(HttpContext.User, userId, newUser);
+			SetStatusCode(result);
+			return result;
 		}
 
 		[HttpDelete("{userId:long}")]
-		public ValueTask<OperationResult<bool>> Delete([FromServices] KeyVaultLogic keyVault, long userId) {
-			return keyVault.DeleteUser(HttpContext.User, userId);
+		public async ValueTask<OperationResult<bool>> Delete([FromServices] KeyVaultLogic keyVault, long userId) {
+			var result = await keyVault.DeleteUser(HttpContext.User, userId);
+			SetStatusCode(result);
+			return result;
 		}
 
 		[HttpGet("{userId:long}/role")]
-		public ValueTask<OperationResult<string[]>> Roles([FromServices] KeyVaultLogic keyVault, long userId) {
-			return keyVault.GetUserRoles(HttpContext.User, userId);
+		public async ValueTask<OperationResult<string[]>> Roles([FromServices] KeyVaultLogic keyVault, long userId) {
+			var result = await keyVault.GetUserRoles(HttpContext.User, userId);
+			SetStatusCode(result);
+			return result;
 		}
 
 		[HttpPut("{userId:long}/role")]
-		public ValueTask<OperationResult<string[]>> ReplaceRoles([FromServices] KeyVaultLogic keyVault, long userId, [FromBody] string[] roles) {
-			return keyVault.ReplaceUserRoles(HttpContext.User, userId, roles);
+		public async ValueTask<OperationResult<string[]>> ReplaceRoles([FromServices] KeyVaultLogic keyVault, long userId, [FromBody] string[] roles) {
+			var result = await keyVault.ReplaceUserRoles(HttpContext.User, userId, roles);
+			SetStatusCode(result);
+			return result;
 		}
 
 		[HttpPatch("{userId:long}/role")]
-		public ValueTask<OperationResult<string[]>> MergeRoles([FromServices] KeyVaultLogic keyVault, long userId, [FromBody] string[] roles) {
-			return keyVault.MergeUserRoles(HttpContext.User, userId, roles);
+		public async ValueTask<OperationResult<string[]>> MergeRoles([FromServices] KeyVaultLogic keyVault, long userId, [FromBody] string[] roles) {
+			var result = await keyVault.MergeUserRoles(HttpContext.User, userId, roles);
+			SetStatusCode(result);
+			return result;
 		}
 
 		[HttpDelete("{userId:long}/role")]
-		public ValueTask<OperationResult<string[]>> DeleteRoles([FromServices] KeyVaultLogic keyVault, long userId, [FromBody] string[] roles) {
-			return keyVault.DeleteUserRoles(HttpContext.User, userId, roles);
+		public async ValueTask<OperationResult<string[]>> DeleteRoles([FromServices] KeyVaultLogic keyVault, long userId, [FromBody] string[] roles) {
+			var result = await keyVault.DeleteUserRoles(HttpContext.User, userId, roles);
+			SetStatusCode(result);
+			return result;
 		}
 	}
 }
