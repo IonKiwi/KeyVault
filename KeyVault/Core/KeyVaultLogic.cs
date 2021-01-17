@@ -486,12 +486,19 @@ namespace KeyVault.Core {
 		}
 
 		public async ValueTask<OperationResult<AllSecretsResult>> GetAllSecrets(ClaimsPrincipal user) {
-			if (!user.IsInRole(KeyVaultRoles.Admin)) {
+			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
+			if (isAdmin) {
+				var result = await _data.GetSecrets().NoSync();
+				return new OperationResult<AllSecretsResult> { Result = new AllSecretsResult { Secrets = result.Select(z => new SecretData { SecretId = z.secretId, Name = z.name }).ToList() } };
+			}
+			else if (user.IsInRole(KeyVaultRoles.ListSecrets)) {
+				var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
+				var result = await _data.GetSecrets(userId).NoSync();
+				return new OperationResult<AllSecretsResult> { Result = new AllSecretsResult { Secrets = result.Select(z => new SecretData { SecretId = z.secretId, Name = z.name }).ToList() } };
+			}
+			else {
 				return new OperationResult<AllSecretsResult> { Unauthorized = true };
 			}
-
-			var result = await _data.GetSecrets().NoSync();
-			return new OperationResult<AllSecretsResult> { Result = new AllSecretsResult { Secrets = result.Select(z => new SecretData { SecretId = z.secretId, Name = z.name }).ToList() } };
 		}
 
 		public async ValueTask<OperationResult<AllSecretsResult>> GetSecretsWithNoAccess(ClaimsPrincipal user) {

@@ -8,5 +8,6 @@ namespace KeyVault.Core {
 		public const string Admin = "Admin";
 		public const string UserManagement = "UserManagement";
 		public const string CreateSecret = "CreateSecret";
+		public const string ListSecrets = "ListSecrets";
 	}
 }

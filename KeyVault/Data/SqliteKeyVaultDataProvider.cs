@@ -433,6 +433,26 @@ namespace KeyVault.Data {
 			}
 		}
 
+		public async ValueTask<List<(long secretId, string name)>> GetSecrets(long userId) {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				var result = new List<(long secretId, string name)>();
+				using (var cmd = new SqliteCommand("SELECT [A].[Id], [A].[Name] FROM [Secret] [A] WHERE [A].[UserId] = @userId;", conn)) {
+					cmd.Parameters.AddWithValue("@userId", userId);
+
+					var reader = await cmd.ExecuteReaderAsync().NoSync();
+					await using (reader.NoSync()) {
+						while (await reader.ReadAsync().NoSync()) {
+							result.Add((reader.GetInt64(0), reader.GetString(1)));
+						}
+					}
+				}
+
+				return result;
+			}
+		}
+
 		public async ValueTask<bool> DeleteSecretsWithNoAccess() {
 			using (var conn = new SqliteConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();
