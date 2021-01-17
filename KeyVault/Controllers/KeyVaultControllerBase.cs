@@ -21,6 +21,9 @@ namespace KeyVault.Controllers {
 			else if (result.ValidationFailed) {
 				HttpContext.Response.StatusCode = 400;
 			}
+			else if (result.Created) {
+				HttpContext.Response.StatusCode = 201;
+			}
 		}
 
 	}

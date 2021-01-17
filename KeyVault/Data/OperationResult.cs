@@ -9,6 +9,7 @@ namespace KeyVault.Data {
 		public bool Unauthorized { get; set; }
 		public bool NotFound { get; set; }
 		public bool Conflict { get; set; }
+		public bool Created { get; set; }
 		public bool ValidationFailed { get; set; }
 		public string ValidationMessage { get; set; }
 		public T Result { get; set; }
