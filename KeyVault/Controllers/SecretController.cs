@@ -66,5 +66,27 @@ namespace KeyVault.Controllers {
 			SetStatusCode(result);
 			return result;
 		}
+
+		[HttpGet("{secretName}/access")]
+		public async ValueTask<OperationResult<Dictionary<long, NewAccessData>>> Access([FromServices] IKeyVaultLogic keyVault, string secretName) {
+			var result = await keyVault.GetSecretAccess(HttpContext.User, secretName);
+			SetStatusCode(result);
+			return result;
+		}
+
+		[HttpDelete("{secretName}/access/{userId:long}")]
+		public async ValueTask<OperationResult<bool>> DeleteAccess([FromServices] IKeyVaultLogic keyVault, string secretName, long userId) {
+			var result = await keyVault.DeleteSecretAccess(HttpContext.User, secretName, userId);
+			SetStatusCode(result);
+			return result;
+		}
+
+		[HttpPut("{secretName}/access/{userId:long}")]
+		[HttpPost("{secretName}/access/{userId:long}")]
+		public async ValueTask<OperationResult<bool>> AddAccess([FromServices] IKeyVaultLogic keyVault, string secretName, long userId, [FromBody] NewAccessData data) {
+			var result = await keyVault.AddOrUpdateSecretAccess(HttpContext.User, secretName, userId, data);
+			SetStatusCode(result);
+			return result;
+		}
 	}
 }

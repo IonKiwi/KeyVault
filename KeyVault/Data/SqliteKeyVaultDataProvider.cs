@@ -49,7 +49,7 @@ namespace KeyVault.Data {
 					await cmd.ExecuteNonQueryAsync().NoSync();
 				}
 
-				using (var cmd = new SqliteCommand("CREATE TABLE [SecretAccess] ([SecretId] INTEGER NOT NULL, [UserId] INTEGER NOT NULL, [Read] BOOLEAN NOT NULL, [Write] BOOLEAN NOT NULL, [Assign] BOOLEAN NOT NULL, FOREIGN KEY (UserId) REFERENCES [User](Id) ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY (SecretId) REFERENCES [Secret](Id) ON DELETE CASCADE ON UPDATE CASCADE);", conn)) {
+				using (var cmd = new SqliteCommand("CREATE TABLE [SecretAccess] ([SecretId] INTEGER NOT NULL, [UserId] INTEGER NOT NULL, [Read] BOOLEAN NOT NULL, [Write] BOOLEAN NOT NULL, [Assign] BOOLEAN NOT NULL, FOREIGN KEY (UserId) REFERENCES [User](Id) ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY (SecretId) REFERENCES [Secret](Id) ON DELETE CASCADE ON UPDATE CASCADE, UNIQUE([SecretId], [UserId]) ON CONFLICT FAIL);", conn)) {
 					await cmd.ExecuteNonQueryAsync().NoSync();
 				}
 
@@ -434,6 +434,34 @@ namespace KeyVault.Data {
 				}
 
 				return result;
+			}
+		}
+
+		public async ValueTask<bool> DeleteSecretAccess(long secretId, long userId) {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				using (var cmd = new SqliteCommand("DELETE FROM [SecretAccess] WHERE [SecretId] = @secretId AND [UserId] = @userId", conn)) {
+					cmd.Parameters.AddWithValue("@secretId", secretId);
+					cmd.Parameters.AddWithValue("@userId", userId);
+					return await cmd.ExecuteNonQueryAsync().NoSync() > 0;
+				}
+			}
+		}
+
+		public async ValueTask<bool> AddOrUpdateSecretAccess(long secretId, long userId, bool read, bool write, bool assign) {
+
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				using (var cmd = new SqliteCommand("INSERT INTO [SecretAccess] ([SecretId], [UserId], [Read], [Write], [Assign]) VALUES (@secretId, @userId, @read, @write @assign) ON CONFLICT DO UPDATE SET [Read] = @read, [Write] = @write, [Assign] = @assign WHERE [SecretId] = @secretId AND [UserId] = @userId", conn)) {
+					cmd.Parameters.AddWithValue("@secretId", secretId);
+					cmd.Parameters.AddWithValue("@userId", userId);
+					cmd.Parameters.AddWithValue("@read", read);
+					cmd.Parameters.AddWithValue("@write", write);
+					cmd.Parameters.AddWithValue("@assign", assign);
+					return await cmd.ExecuteNonQueryAsync().NoSync() > 0;
+				}
 			}
 		}
 

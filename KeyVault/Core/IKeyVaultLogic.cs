@@ -28,5 +28,8 @@ namespace KeyVault.Core {
 		ValueTask<OperationResult<bool>> DeleteCredential(ClaimsPrincipal user, long userId, long credentialId);
 		ValueTask<OperationResult<long>> AddWindowsCredential(ClaimsPrincipal user, long userId, string account);
 		ValueTask<OperationResult<long>> AddBasicCredential(ClaimsPrincipal user, long userId, string username, string password);
+		ValueTask<OperationResult<Dictionary<long, NewAccessData>>> GetSecretAccess(ClaimsPrincipal user, string secretName);
+		ValueTask<OperationResult<bool>> DeleteSecretAccess(ClaimsPrincipal user, string secretName, long userId);
+		ValueTask<OperationResult<bool>> AddOrUpdateSecretAccess(ClaimsPrincipal user, string secretName, long userId, NewAccessData data);
 	}
 }
