@@ -276,12 +276,9 @@ namespace KeyVault.Core {
 		}
 
 		private string GetTokenForUser(List<Claim> claims) {
-			using (var key = GetECDsa()) {
-				var securityKey = new ECDsaSecurityKey(key);
-				var tokenCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha256);
-				var token = new JwtSecurityToken("KeyVault", "urn:target", claims, expires: DateTime.UtcNow.AddHours(2), signingCredentials: tokenCredentials);
-				return GetJwtTokenHandler().WriteToken(token);
-			}
+			var tokenCredentials = new SigningCredentials(GetSecurityKey(), SecurityAlgorithms.EcdsaSha256);
+			var token = new JwtSecurityToken("KeyVault", "urn:target", claims, expires: DateTime.UtcNow.AddHours(2), signingCredentials: tokenCredentials);
+			return GetJwtTokenHandler().WriteToken(token);
 		}
 
 		private sealed class BasicCredential {
