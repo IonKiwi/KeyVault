@@ -15,6 +15,7 @@ namespace KeyVault.Core {
 		ValueTask<OperationResult<CompletedResult>> DeleteSecret(ClaimsPrincipal user, string name);
 		ValueTask<OperationResult<CompletedResult>> DeleteSecretsWithNoAccess(ClaimsPrincipal user);
 		ValueTask<OperationResult<CompletedResult>> DeleteUser(ClaimsPrincipal user, long userId);
+		ValueTask<OperationResult<AllSecretsResult>> GetAllSecrets(ClaimsPrincipal user);
 		ValueTask<OperationResult<UserRolesResult>> DeleteUserRoles(ClaimsPrincipal user, long userId, string[] roles);
 		ValueTask<OperationResult<string>> GetSecret(ClaimsPrincipal user, string name);
 		ValueTask<OperationResult<AllSecretsResult>> GetSecretsWithNoAccess(ClaimsPrincipal user);

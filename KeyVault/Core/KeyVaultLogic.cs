@@ -187,11 +187,12 @@ namespace KeyVault.Core {
 
 			HashSet<string> toRemove = new HashSet<string>();
 			foreach (var role in roles) {
-				// only roles that the current user has
-				if (!isAdmin && !user.IsInRole(role)) {
-					return new OperationResult<UserRolesResult> { Unauthorized = true };
-				}
-				if (userInfo.Roles.Contains(role)) {
+				var hasRole = userInfo.Roles.Contains(role);
+				if (hasRole) {
+					// only roles that the current user has
+					if (!isAdmin && !user.IsInRole(role)) {
+						return new OperationResult<UserRolesResult> { Unauthorized = true };
+					}
 					toRemove.Add(role);
 				}
 			}
@@ -307,7 +308,7 @@ namespace KeyVault.Core {
 
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			var isAdmin = user.IsInRole(KeyVaultRoles.Admin);
-			if (!isAdmin || !secret.Access.TryGetValue(userId, out var access) || !access.Read) {
+			if (!(isAdmin || (secret.Access.TryGetValue(userId, out var access) && access.Read))) {
 				return new OperationResult<string> { Unauthorized = true };
 			}
 
@@ -434,14 +435,14 @@ namespace KeyVault.Core {
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();
-			if (secret != null) {
+			if (secret == null) {
 				return new OperationResult<SecretResult> { NotFound = true };
 			}
 
 			// check access
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
-			if (!isAdmin || !secret.Access.TryGetValue(userId, out var access) || !access.Write) {
+			if (!(isAdmin || (secret.Access.TryGetValue(userId, out var access) && access.Write))) {
 				return new OperationResult<SecretResult> { Unauthorized = true };
 			}
 
@@ -469,19 +470,28 @@ namespace KeyVault.Core {
 			}
 
 			var secret = await _data.GetSecret(name).NoSync();
-			if (secret != null) {
+			if (secret == null) {
 				return new OperationResult<CompletedResult> { NotFound = true };
 			}
 
 			// check access
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
-			if (!isAdmin || !secret.Access.TryGetValue(userId, out var access) || !access.Write) {
+			if (!(isAdmin || (secret.Access.TryGetValue(userId, out var access) && access.Write))) {
 				return new OperationResult<CompletedResult> { Unauthorized = true };
 			}
 
 			var result = await _data.DeleteSecret(userId, name).NoSync();
 			return new OperationResult<CompletedResult> { Result = new CompletedResult { Completed = result } };
+		}
+
+		public async ValueTask<OperationResult<AllSecretsResult>> GetAllSecrets(ClaimsPrincipal user) {
+			if (!user.IsInRole(KeyVaultRoles.Admin)) {
+				return new OperationResult<AllSecretsResult> { Unauthorized = true };
+			}
+
+			var result = await _data.GetSecrets().NoSync();
+			return new OperationResult<AllSecretsResult> { Result = new AllSecretsResult { Secrets = result.Select(z => new SecretData { SecretId = z.secretId, Name = z.name }).ToList() } };
 		}
 
 		public async ValueTask<OperationResult<AllSecretsResult>> GetSecretsWithNoAccess(ClaimsPrincipal user) {
@@ -491,7 +501,7 @@ namespace KeyVault.Core {
 			}
 
 			var result = await _data.GetSecretsWithNoAccess().NoSync();
-			return new OperationResult<AllSecretsResult> { Result = new AllSecretsResult { Secrets = result } };
+			return new OperationResult<AllSecretsResult> { Result = new AllSecretsResult { Secrets = result.Select(z => new SecretData { SecretId = z.secretId, Name = z.name }).ToList() } };
 		}
 
 		public async ValueTask<OperationResult<CompletedResult>> DeleteSecretsWithNoAccess(ClaimsPrincipal user) {
@@ -516,7 +526,7 @@ namespace KeyVault.Core {
 			}
 
 			var credentials = await _data.GetUserCredentials(userId).NoSync();
-			return new OperationResult<UserCredentialsResult> { Result = new UserCredentialsResult { Credentials = credentials } };
+			return new OperationResult<UserCredentialsResult> { Result = new UserCredentialsResult { Credentials = credentials.Select(z => new CredentialData { CredentialId = z.credentialId, CredentialType = z.type, Identifier = z.identifier }).ToList() } };
 		}
 
 		public async ValueTask<OperationResult<CompletedResult>> DeleteCredential(ClaimsPrincipal user, long userId, long credentialId) {
@@ -603,14 +613,14 @@ namespace KeyVault.Core {
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();
-			if (secret != null) {
+			if (secret == null) {
 				return new OperationResult<SecretAccessResult> { NotFound = true };
 			}
 
 			// check access
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
-			if (!isAdmin || !secret.Access.TryGetValue(userId, out var access) || !access.Assign) {
+			if (!(isAdmin || (secret.Access.TryGetValue(userId, out var access) && access.Assign))) {
 				return new OperationResult<SecretAccessResult> { Unauthorized = true };
 			}
 
@@ -624,14 +634,14 @@ namespace KeyVault.Core {
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();
-			if (secret != null) {
+			if (secret == null) {
 				return new OperationResult<CompletedResult> { NotFound = true };
 			}
 
 			// check access
 			var currentUserId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
-			if (!isAdmin || !secret.Access.TryGetValue(currentUserId, out var access) || !access.Assign) {
+			if (!(isAdmin || (secret.Access.TryGetValue(currentUserId, out var access) && access.Assign))) {
 				return new OperationResult<CompletedResult> { Unauthorized = true };
 			}
 
@@ -646,14 +656,14 @@ namespace KeyVault.Core {
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();
-			if (secret != null) {
+			if (secret == null) {
 				return new OperationResult<CompletedResult> { NotFound = true };
 			}
 
 			// check access
 			var currentUserId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
-			if (!isAdmin || !secret.Access.TryGetValue(currentUserId, out var access) || !access.Assign) {
+			if (!(isAdmin || (secret.Access.TryGetValue(currentUserId, out var access) && access.Assign))) {
 				return new OperationResult<CompletedResult> { Unauthorized = true };
 			}
 

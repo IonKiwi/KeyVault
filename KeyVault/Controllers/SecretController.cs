@@ -22,6 +22,13 @@ namespace KeyVault.Controllers {
 			_logger = logger;
 		}
 
+		[HttpGet]
+		public async ValueTask<OperationResult<AllSecretsResult>> GetAllSecrets([FromServices] IKeyVaultLogic keyVault) {
+			var result = await keyVault.GetAllSecrets(HttpContext.User);
+			SetStatusCode(result);
+			return result;
+		}
+
 		[HttpGet("{secretName}")]
 		public async ValueTask<IActionResult> Get([FromServices] IKeyVaultLogic keyVault, string secretName) {
 			var secret = await keyVault.GetSecret(HttpContext.User, secretName);

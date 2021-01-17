@@ -7,6 +7,6 @@ using System.Threading.Tasks;
 namespace KeyVault.Data {
 	public class UserCredentialsResult {
 		[JsonPropertyName("credentials")]
-		public List<(long credentialId, string credentialType, string identifier)> Credentials { get; set; }
+		public List<CredentialData> Credentials { get; set; }
 	}
 }

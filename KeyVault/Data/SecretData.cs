@@ -5,8 +5,10 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace KeyVault.Data {
-	public class AllSecretsResult {
-		[JsonPropertyName("secrets")]
-		public List<SecretData> Secrets { get; set; }
+	public class SecretData {
+		[JsonPropertyName("secretId")]
+		public long SecretId { get; set; }
+		[JsonPropertyName("name")]
+		public string Name { get; set; }
 	}
 }

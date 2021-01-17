@@ -61,6 +61,10 @@ namespace KeyVault.Data {
 					await cmd.ExecuteNonQueryAsync().NoSync();
 				}
 
+				using (var cmd = new SqliteCommand("CREATE INDEX [UserCredential_TypeCredential] ON [UserCredential] ([Type], [Identifier]);", conn)) {
+					await cmd.ExecuteNonQueryAsync().NoSync();
+				}
+
 				using (var cmd = new SqliteCommand("CREATE TABLE [Secret] ([Id] INTEGER PRIMARY KEY AUTOINCREMENT, [Name] TEXT NOT NULL, [Type] TEXT NOT NULL, [Value] BINARY NOT NULL, [IV] BINARY NOT NULL, [CreateDate] DATETIME NOT NULL, [CreatorUserId] INTEGER NULL, [LastUpdateDate] DATETIME NULL, [LastUpdateUserId] INTEGER NULL, FOREIGN KEY (CreatorUserId) REFERENCES [User](Id) ON DELETE SET NULL ON UPDATE CASCADE, FOREIGN KEY (LastUpdateUserId) REFERENCES [User](Id) ON DELETE SET NULL ON UPDATE CASCADE, UNIQUE([Name]) ON CONFLICT FAIL);", conn)) {
 					await cmd.ExecuteNonQueryAsync().NoSync();
 				}
@@ -131,7 +135,7 @@ namespace KeyVault.Data {
 					await using (reader.NoSync()) {
 						var result = new List<(long credentialId, string type, string identifier)>();
 						while (await reader.ReadAsync().NoSync()) {
-							result.Add((reader.GetInt64(0), reader.GetString(1), reader.GetString(20)));
+							result.Add((reader.GetInt64(0), reader.GetString(1), reader.GetString(2)));
 						}
 						return result;
 					}
@@ -154,11 +158,11 @@ namespace KeyVault.Data {
 			using (var conn = new SqliteConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();
 
-				using (var cmd = new SqliteCommand("INSERT INTO [UserCredential] ([UserId], [Type], [Identifier], [Value]) VALUES (@userId, @type, @identifier, @value)", conn)) {
+				using (var cmd = new SqliteCommand("INSERT INTO [UserCredential] ([UserId], [Type], [Identifier], [Value]) VALUES (@userId, @type, @identifier, @value); SELECT last_insert_rowid();", conn)) {
 					cmd.Parameters.AddWithValue("@userId", userId);
 					cmd.Parameters.AddWithValue("@type", type);
 					cmd.Parameters.AddWithValue("@identifier", identifier);
-					cmd.Parameters.AddWithValue("@value", value);
+					cmd.Parameters.AddWithValue("@value", string.IsNullOrEmpty(value) ? DBNull.Value : value);
 					return (long)await cmd.ExecuteScalarAsync().NoSync();
 				}
 			}
@@ -220,7 +224,7 @@ namespace KeyVault.Data {
 							using (var cmd2 = new SqliteCommand("SELECT [Role] FROM [UserRole] WHERE [UserId] = @userId;", conn)) {
 								cmd2.Parameters.AddWithValue("@userId", userId);
 
-								var reader2 = await cmd.ExecuteReaderAsync().NoSync();
+								var reader2 = await cmd2.ExecuteReaderAsync().NoSync();
 								await using (reader2.NoSync()) {
 
 									while (await reader2.ReadAsync().NoSync()) {
@@ -355,7 +359,7 @@ namespace KeyVault.Data {
 				await using (transaction.NoSync()) {
 
 					long secretId;
-					using (var cmd = new SqliteCommand("INSERT INTO [Secret] ([Name], [Value], [Type], [IV], [CreateDate], CreatorUserId]) VALUES (@name, @value, @iv, @createDate, @creatorUserId); SELECT last_insert_rowid();", conn, transaction)) {
+					using (var cmd = new SqliteCommand("INSERT INTO [Secret] ([Name], [Value], [Type], [IV], [CreateDate], [CreatorUserId]) VALUES (@name, @value, @type, @iv, @createDate, @creatorUserId); SELECT last_insert_rowid();", conn, transaction)) {
 						cmd.Parameters.AddWithValue("@name", name);
 						cmd.Parameters.AddWithValue("@value", value);
 						cmd.Parameters.AddWithValue("@type", type.ToString());
@@ -408,6 +412,24 @@ namespace KeyVault.Data {
 					return await cmd.ExecuteNonQueryAsync().NoSync() > 0;
 				}
 
+			}
+		}
+
+		public async ValueTask<List<(long secretId, string name)>> GetSecrets() {
+			using (var conn = new SqliteConnection(_connectionString)) {
+				await conn.OpenAsync().NoSync();
+
+				var result = new List<(long secretId, string name)>();
+				using (var cmd = new SqliteCommand("SELECT [A].[Id], [A].[Name] FROM [Secret] [A];", conn)) {
+					var reader = await cmd.ExecuteReaderAsync().NoSync();
+					await using (reader.NoSync()) {
+						while (await reader.ReadAsync().NoSync()) {
+							result.Add((reader.GetInt64(0), reader.GetString(1)));
+						}
+					}
+				}
+
+				return result;
 			}
 		}
 
@@ -473,7 +495,9 @@ namespace KeyVault.Data {
 
 				KeyVaultSecret result;
 				Dictionary<long, KeyVaultSecretAccess> access = new Dictionary<long, KeyVaultSecretAccess>();
-				using (var cmd = new SqliteCommand("SELECT [A].[Id], [A].[Name], [A].[Type], [A].[Value], [A].[IV], [A].[CreateData], [A].[CreatorUserId], [A].[LastUpdateDate], [A].[LastUpdateUserId] FROM [Secret] WHERE [A].[Name] = @name", conn)) {
+				using (var cmd = new SqliteCommand("SELECT [A].[Id], [A].[Name], [A].[Type], [A].[Value], [A].[IV], [A].[CreateDate], [A].[CreatorUserId], [A].[LastUpdateDate], [A].[LastUpdateUserId] FROM [Secret] [A] WHERE [A].[Name] = @name", conn)) {
+					cmd.Parameters.AddWithValue("@name", name);
+
 					var reader = await cmd.ExecuteReaderAsync().NoSync();
 					await using (reader.NoSync()) {
 						if (!await reader.ReadAsync().NoSync()) {
@@ -485,7 +509,7 @@ namespace KeyVault.Data {
 					}
 				}
 
-				using (var cmd = new SqliteCommand("SELECT [A].[UserId], [A].[Read], [A].[Write], [A].[Assign] FROM [SecretAccess] WHERE [A].[SecretId] = @secretId", conn)) {
+				using (var cmd = new SqliteCommand("SELECT [A].[UserId], [A].[Read], [A].[Write], [A].[Assign] FROM [SecretAccess] [A] WHERE [A].[SecretId] = @secretId", conn)) {
 					cmd.Parameters.AddWithValue("@secretId", result.Id);
 
 					var reader = await cmd.ExecuteReaderAsync().NoSync();

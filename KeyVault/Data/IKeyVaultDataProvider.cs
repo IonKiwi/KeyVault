@@ -22,6 +22,7 @@ namespace KeyVault.Data {
 		ValueTask<long> CreateSecret(long userId, string name, KeyVaultSecretType type, byte[] value, byte[] iv);
 		ValueTask<long> UpdateSecret(long userId, string name, KeyVaultSecretType type, byte[] value, byte[] iv);
 		ValueTask<bool> DeleteSecret(long userId, string name);
+		ValueTask<List<(long secretId, string name)>> GetSecrets();
 		ValueTask<bool> DeleteSecretsWithNoAccess();
 		ValueTask<List<(long secretId, string name)>> GetSecretsWithNoAccess();
 		ValueTask<KeyVaultSecret> GetSecret(string name);
