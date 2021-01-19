@@ -30,5 +30,67 @@ namespace KeyVault.Controllers {
 			await keyVault.Create();
 			return Ok();
 		}
+
+		[HttpGet("{secretName}")]
+		[Authorize]
+		public async ValueTask<IActionResult> GetDefault([FromServices] IKeyVaultLogic keyVault, string secretName, KeyVaultSecretValueMode mode) {
+			if (mode == KeyVaultSecretValueMode.Text) {
+				var secret = await keyVault.GetSecretValue(HttpContext.User, secretName, null);
+				if (secret.NotFound) {
+					return NotFound();
+				}
+				else if (secret.Unauthorized) {
+					return Unauthorized();
+				}
+				return new ObjectResult(secret.Result);
+			}
+			else if (mode == KeyVaultSecretValueMode.Binary) {
+				var secret = await keyVault.GetSecretValueAsBinrary(HttpContext.User, secretName, null);
+				if (secret.NotFound) {
+					return NotFound();
+				}
+				else if (secret.Unauthorized) {
+					return Unauthorized();
+				}
+				if (secret.Result.type == KeyVaultSecretType.Text) {
+					return File(secret.Result.data, "text/plain; charset=utf-8");
+				}
+				return File(secret.Result.data, "application/octet-stream");
+			}
+			else {
+				throw new NotImplementedException(mode.ToString());
+			}
+		}
+
+		[HttpGet("{secretName}/{name}")]
+		[Authorize]
+		public async ValueTask<IActionResult> Get([FromServices] IKeyVaultLogic keyVault, string secretName, string name, KeyVaultSecretValueMode mode) {
+			if (mode == KeyVaultSecretValueMode.Text) {
+				var secret = await keyVault.GetSecretValue(HttpContext.User, secretName, name);
+				if (secret.NotFound) {
+					return NotFound();
+				}
+				else if (secret.Unauthorized) {
+					return Unauthorized();
+				}
+				return new ObjectResult(secret.Result);
+			}
+			else if (mode == KeyVaultSecretValueMode.Binary) {
+				var secret = await keyVault.GetSecretValueAsBinrary(HttpContext.User, secretName, name);
+				if (secret.NotFound) {
+					return NotFound();
+				}
+				else if (secret.Unauthorized) {
+					return Unauthorized();
+				}
+				if (secret.Result.type == KeyVaultSecretType.Text) {
+					return File(secret.Result.data, "text/plain; charset=utf-8");
+				}
+				return File(secret.Result.data, "application/octet-stream");
+			}
+			else {
+				throw new NotImplementedException(mode.ToString());
+			}
+		}
 	}
 }

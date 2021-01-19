@@ -5,28 +5,26 @@ using System.Threading.Tasks;
 
 namespace KeyVault.Core {
 	public sealed class KeyVaultSecret {
-		public KeyVaultSecret(long id, string name, KeyVaultSecretType type, byte[] value, byte[] iv, DateTime created, long createdByUserId, DateTime? lastUpdate, long? lastUpdatedByUserId, IReadOnlyDictionary<long, KeyVaultSecretAccess> access) {
+		public KeyVaultSecret(long id, string name, string description, DateTime created, long createdByUserId, DateTime? lastUpdate, long? lastUpdatedByUserId, IReadOnlyDictionary<string, KeyVaultSecretData> data, IReadOnlyDictionary<long, KeyVaultSecretAccess> access) {
 			Id = id;
 			Name = name;
-			SecretType = type;
-			Value = value;
-			IV = iv;
+			Description = description;
 			Created = created;
 			CreatedByUserId = createdByUserId;
 			LastUpdate = lastUpdate;
 			LastUpdatedByUserId = lastUpdatedByUserId;
+			Data = data;
 			Access = access;
 		}
 
 		public long Id { get; }
 		public string Name { get; }
-		public KeyVaultSecretType SecretType { get; }
-		public byte[] Value { get; }
-		public byte[] IV { get; }
+		public string Description { get; }
 		public DateTime Created { get; }
 		public long CreatedByUserId { get; }
 		public DateTime? LastUpdate { get; }
 		public long? LastUpdatedByUserId { get; }
+		public IReadOnlyDictionary<string, KeyVaultSecretData> Data { get; }
 		public IReadOnlyDictionary<long, KeyVaultSecretAccess> Access { get; }
 	}
 
@@ -36,15 +34,15 @@ namespace KeyVault.Core {
 	}
 
 	public sealed class KeyVaultSecretAccess {
-		public KeyVaultSecretAccess(KeyVaultSecret parent, long userId, bool read, bool write, bool assign) {
-			Parent = parent;
+		public KeyVaultSecretAccess(KeyVaultSecret secret, long userId, bool read, bool write, bool assign) {
+			Secret = secret;
 			UserId = userId;
 			Read = read;
 			Write = write;
 			Assign = assign;
 		}
 
-		public KeyVaultSecret Parent { get; }
+		public KeyVaultSecret Secret { get; }
 		public long UserId { get; }
 		public bool Read { get; }
 		public bool Write { get; }

@@ -5,8 +5,9 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace KeyVault.Data {
-	public class AllSecretsResult {
-		[JsonPropertyName("secrets")]
-		public List<SecretItem> Secrets { get; set; }
+	public class UpdateSecretDescription {
+
+		[JsonPropertyName("description")]
+		public string Description { get; set; }
 	}
 }

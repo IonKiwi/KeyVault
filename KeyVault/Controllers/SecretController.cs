@@ -29,40 +29,9 @@ namespace KeyVault.Controllers {
 			return result;
 		}
 
-		[HttpGet("{secretName}")]
-		public async ValueTask<IActionResult> Get([FromServices] IKeyVaultLogic keyVault, string secretName) {
-			var secret = await keyVault.GetSecret(HttpContext.User, secretName);
-			if (secret.NotFound) {
-				return NotFound();
-			}
-			else if (secret.Unauthorized) {
-				return Unauthorized();
-			}
-			return new ObjectResult(secret.Result);
-		}
-
-		[HttpGet("{secretName}/bin")]
-		public async ValueTask<IActionResult> GetBinary([FromServices] IKeyVaultLogic keyVault, string secretName) {
-			var secret = await keyVault.GetSecretAsBinrary(HttpContext.User, secretName);
-			if (secret.NotFound) {
-				return NotFound();
-			}
-			else if (secret.Unauthorized) {
-				return Unauthorized();
-			}
-			return File(secret.Result, "application/octet-stream");
-		}
-
 		[HttpPost]
 		public async ValueTask<OperationResult<SecretResult>> Post([FromServices] IKeyVaultLogic keyVault, [FromBody] NewSecret newSecret) {
 			var result = await keyVault.NewSecret(HttpContext.User, newSecret);
-			SetStatusCode(result);
-			return result;
-		}
-
-		[HttpPut("{secretName}")]
-		public async ValueTask<OperationResult<SecretResult>> Update([FromServices] IKeyVaultLogic keyVault, string secretName, [FromBody] NewSecretData data) {
-			var result = await keyVault.UpdateSecret(HttpContext.User, secretName, data);
 			SetStatusCode(result);
 			return result;
 		}
@@ -73,6 +42,94 @@ namespace KeyVault.Controllers {
 			SetStatusCode(result);
 			return result;
 		}
+
+		[HttpGet("{secretName}/metadata")]
+		public async ValueTask<OperationResult<SecretItem>> GetSecret([FromServices] IKeyVaultLogic keyVault, string secretName) {
+			var result = await keyVault.GetSecret(HttpContext.User, secretName);
+			SetStatusCode(result);
+			return result;
+		}
+
+		[HttpPut("{secretName}/metadata")]
+		public async ValueTask<OperationResult<SecretResult>> Update([FromServices] IKeyVaultLogic keyVault, string secretName, [FromBody] UpdateSecretDescription data) {
+			var result = await keyVault.UpdateSecretDescription(HttpContext.User, secretName, data);
+			SetStatusCode(result);
+			return result;
+		}
+
+
+
+		[HttpGet("{secretName}/data")]
+		public async ValueTask<OperationResult<AllSecretData>> GetData([FromServices] IKeyVaultLogic keyVault, string secretName) {
+			var result = await keyVault.GetSecretDataForSecret(HttpContext.User, secretName);
+			SetStatusCode(result);
+			return result;
+		}
+
+		[HttpDelete("{secretName}/data")]
+		public async ValueTask<OperationResult<CompletedResult>> DeleteDefaultSecretData([FromServices] IKeyVaultLogic keyVault, string secretName) {
+			var result = await keyVault.DeleteSecretData(HttpContext.User, secretName, null);
+			SetStatusCode(result);
+			return result;
+		}
+
+		[HttpDelete("{secretName}/data/{name}")]
+		public async ValueTask<OperationResult<CompletedResult>> DeleteSecretData([FromServices] IKeyVaultLogic keyVault, string secretName, string name) {
+			var result = await keyVault.DeleteSecretData(HttpContext.User, secretName, name);
+			SetStatusCode(result);
+			return result;
+		}
+
+		[HttpPut("{secretName}/data")]
+		public async ValueTask<OperationResult<CompletedResult>> UpdateDefaultSecretData([FromServices] IKeyVaultLogic keyVault, string secretName, [FromBody] UpdateSecretData data) {
+			var result = await keyVault.UpdateSecretData(HttpContext.User, secretName, null, data);
+			SetStatusCode(result);
+			return result;
+		}
+
+		[HttpPut("{secretName}/data/{name}")]
+		public async ValueTask<OperationResult<CompletedResult>> UpdateSecretData([FromServices] IKeyVaultLogic keyVault, string secretName, string name, [FromBody] UpdateSecretData data) {
+			var result = await keyVault.UpdateSecretData(HttpContext.User, secretName, name, data);
+			SetStatusCode(result);
+			return result;
+		}
+
+		[HttpPost("{secretName}/data")]
+		public async ValueTask<OperationResult<CompletedResult>> AddSecretData([FromServices] IKeyVaultLogic keyVault, string secretName, [FromBody] NewSecretData data) {
+			var result = await keyVault.NewSecretData(HttpContext.User, secretName, data);
+			SetStatusCode(result);
+			return result;
+		}
+
+		[HttpGet("{secretName}/metadata/data")]
+		public async ValueTask<OperationResult<SecretDataItem>> GetDefaultSecretDataDescription([FromServices] IKeyVaultLogic keyVault, string secretName) {
+			var result = await keyVault.GetSecretData(HttpContext.User, secretName, null);
+			SetStatusCode(result);
+			return result;
+		}
+
+		[HttpGet("{secretName}/metadata/data/{name}")]
+		public async ValueTask<OperationResult<SecretDataItem>> GetSecretDataDescription([FromServices] IKeyVaultLogic keyVault, string secretName, string name) {
+			var result = await keyVault.GetSecretData(HttpContext.User, secretName, name);
+			SetStatusCode(result);
+			return result;
+		}
+
+		[HttpPut("{secretName}/metadata/data")]
+		public async ValueTask<OperationResult<CompletedResult>> UpdateDefaultSecretDataDescription([FromServices] IKeyVaultLogic keyVault, string secretName, [FromBody] UpdateSecretDataDescription data) {
+			var result = await keyVault.UpdateSecretDataDescription(HttpContext.User, secretName, null, data);
+			SetStatusCode(result);
+			return result;
+		}
+
+		[HttpPut("{secretName}/metadata/data/{name}")]
+		public async ValueTask<OperationResult<CompletedResult>> UpdateSecretDataDescription([FromServices] IKeyVaultLogic keyVault, string secretName, string name, [FromBody] UpdateSecretDataDescription data) {
+			var result = await keyVault.UpdateSecretDataDescription(HttpContext.User, secretName, name, data);
+			SetStatusCode(result);
+			return result;
+		}
+
+
 
 		[HttpGet("NoAccess")]
 		public async ValueTask<OperationResult<AllSecretsResult>> NoAccess([FromServices] IKeyVaultLogic keyVault) {
@@ -87,6 +144,8 @@ namespace KeyVault.Controllers {
 			SetStatusCode(result);
 			return result;
 		}
+
+
 
 		[HttpGet("{secretName}/access")]
 		public async ValueTask<OperationResult<SecretAccessResult>> Access([FromServices] IKeyVaultLogic keyVault, string secretName) {

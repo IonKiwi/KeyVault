@@ -22,6 +22,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -95,7 +96,9 @@ namespace KeyVault {
 				});
 			});
 
-			services.AddControllers();
+			services.AddControllers().AddJsonOptions(opts => {
+				opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+			});
 			services.AddSwaggerGen(c => {
 				c.SwaggerDoc("v1", new OpenApiInfo { Title = "KeyVault", Version = "v1" });
 			});
