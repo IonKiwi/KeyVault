@@ -171,7 +171,7 @@ namespace KeyVault.Data {
 				}
 
 				var roles = new HashSet<string>();
-				using (var cmd = new NpgsqlCommand("SELECT \"Role\" FROM \"UserRole\" WHERE \"UserId\" = @userId;", conn)) {
+				using (var cmd = new NpgsqlCommand("SELECT \"Role\" FROM \"UserRole\" WHERE \"UserId\" = @userId ORDER BY \"Role\" ASC;", conn)) {
 					cmd.Parameters.AddWithValue("@userId", userId);
 
 					var reader = await cmd.ExecuteReaderAsync().NoSync();
@@ -195,7 +195,7 @@ namespace KeyVault.Data {
 				var result = new List<UserInformation>();
 				var userRoles = new Dictionary<long, HashSet<string>>();
 
-				using (var cmd = new NpgsqlCommand("SELECT \"Id\", \"Name\" FROM \"User\";", conn)) {
+				using (var cmd = new NpgsqlCommand("SELECT \"Id\", \"Name\" FROM \"User\" ORDER BY \"Id\" ASC;", conn)) {
 
 					var reader = await cmd.ExecuteReaderAsync().NoSync();
 					await using (reader.NoSync()) {
@@ -212,7 +212,7 @@ namespace KeyVault.Data {
 				}
 
 				foreach (var user in result) {
-					using (var cmd2 = new NpgsqlCommand("SELECT \"Role\" FROM \"UserRole\" WHERE \"UserId\" = @userId;", conn)) {
+					using (var cmd2 = new NpgsqlCommand("SELECT \"Role\" FROM \"UserRole\" WHERE \"UserId\" = @userId ORDER BY \"Role\" ASC;", conn)) {
 						cmd2.Parameters.AddWithValue("@userId", user.Id);
 
 						var reader2 = await cmd2.ExecuteReaderAsync().NoSync();
@@ -264,7 +264,7 @@ namespace KeyVault.Data {
 			using (var conn = new NpgsqlConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();
 
-				using (var cmd = new NpgsqlCommand("SELECT \"Id\", \"Type\", \"Identifier\" FROM \"UserCredential\" WHERE \"UserId\" = @userId;", conn)) {
+				using (var cmd = new NpgsqlCommand("SELECT \"Id\", \"Type\", \"Identifier\" FROM \"UserCredential\" WHERE \"UserId\" = @userId ORDER BY \"Id\" ASC;", conn)) {
 					cmd.Parameters.AddWithValue("@userId", userId);
 					var reader = await cmd.ExecuteReaderAsync().NoSync();
 					await using (reader.NoSync()) {
@@ -502,7 +502,9 @@ namespace KeyVault.Data {
 					bool updated;
 					using (var cmd = new NpgsqlCommand("UPDATE \"SecretData\" SET \"Description\" = @description, \"LastUpdateDate\" = @lastUpdateData, \"LastUpdateUserId\" = @lastUpdateUserId WHERE \"SecretId\" = @secretId AND \"Name\" " + (string.IsNullOrEmpty(name) ? "IS NULL" : "= @name") + ";", conn, transaction)) {
 						cmd.Parameters.AddWithValue("@secretId", secretId);
-						cmd.Parameters.AddWithValue("@name", name);
+						if (!string.IsNullOrEmpty(name)) {
+							cmd.Parameters.AddWithValue("@name", name);
+						}
 						cmd.Parameters.AddWithValue("@description", description);
 						cmd.Parameters.AddWithValue("@lastUpdateData", ts);
 						cmd.Parameters.AddWithValue("@lastUpdateUserId", userId);
@@ -535,7 +537,9 @@ namespace KeyVault.Data {
 					bool updated;
 					using (var cmd = new NpgsqlCommand("UPDATE \"SecretData\" SET \"Type\" = @type, \"Value\" = @value, \"IV\" = @iv, \"LastUpdateDate\" = @lastUpdateData, \"LastUpdateUserId\" = @lastUpdateUserId WHERE \"SecretId\" = @secretId AND \"Name\" " + (string.IsNullOrEmpty(name) ? "IS NULL" : "= @name") + ";", conn, transaction)) {
 						cmd.Parameters.AddWithValue("@secretId", secretId);
-						cmd.Parameters.AddWithValue("@name", name);
+						if (!string.IsNullOrEmpty(name)) {
+							cmd.Parameters.AddWithValue("@name", name);
+						}
 						cmd.Parameters.AddWithValue("@type", type.ToString());
 						cmd.Parameters.AddWithValue("@value", value);
 						cmd.Parameters.AddWithValue("@iv", iv);
@@ -570,7 +574,9 @@ namespace KeyVault.Data {
 					var result = new List<(long secretId, string name)>();
 					using (var cmd = new NpgsqlCommand("DELETE FROM \"SecretData\" WHERE \"SecretId\" = @secretId AND \"Name\" " + (string.IsNullOrEmpty(name) ? "IS NULL" : "= @name") + ";", conn, transaction)) {
 						cmd.Parameters.AddWithValue("@secretId", secretId);
-						cmd.Parameters.AddWithValue("@name", name);
+						if (!string.IsNullOrEmpty(name)) {
+							cmd.Parameters.AddWithValue("@name", name);
+						}
 						deleted = await cmd.ExecuteNonQueryAsync().NoSync() > 0;
 					}
 
@@ -595,7 +601,7 @@ namespace KeyVault.Data {
 				await conn.OpenAsync().NoSync();
 
 				var result = new List<(string name, string description, KeyVaultSecretType type, long creatorUserId, DateTime createdDate, long? lastUpdateUserId, DateTime? lastUpdateDate)>();
-				using (var cmd = new NpgsqlCommand("SELECT \"A\".\"Name\", \"A\".\"Description\", \"A\".\"Type\", \"A\".\"CreatorUserId\", \"A\".\"CreateDate\", \"A\".\"LastUpdateUserId\", \"A\".\"LastUpdateDate\" FROM \"SecretData\" \"A\" WHERE \"A\".\"SecretId\" = @secretId;", conn)) {
+				using (var cmd = new NpgsqlCommand("SELECT \"A\".\"Name\", \"A\".\"Description\", \"A\".\"Type\", \"A\".\"CreatorUserId\", \"A\".\"CreateDate\", \"A\".\"LastUpdateUserId\", \"A\".\"LastUpdateDate\" FROM \"SecretData\" \"A\" WHERE \"A\".\"SecretId\" = @secretId ORDER BY \"Name\" ASC;", conn)) {
 					cmd.Parameters.AddWithValue("@secretId", secretId);
 
 					var reader = await cmd.ExecuteReaderAsync().NoSync();
@@ -618,7 +624,9 @@ namespace KeyVault.Data {
 
 				using (var cmd = new NpgsqlCommand("SELECT \"A\".\"Type\", \"A\".\"Value\", \"A\".\"IV\" FROM \"SecretData\" \"A\" WHERE \"A\".\"SecretId\" = @secretId AND \"A\".\"Name\" " + (string.IsNullOrEmpty(name) ? "IS NULL" : "= @name") + ";", conn)) {
 					cmd.Parameters.AddWithValue("@secretId", secretId);
-					cmd.Parameters.AddWithValue("@name", name);
+					if (!string.IsNullOrEmpty(name)) {
+						cmd.Parameters.AddWithValue("@name", name);
+					}
 
 					var reader = await cmd.ExecuteReaderAsync().NoSync();
 					await using (reader.NoSync()) {
@@ -643,7 +651,7 @@ namespace KeyVault.Data {
 				KeyVaultSecret result;
 				Dictionary<long, KeyVaultSecretAccess> access = new Dictionary<long, KeyVaultSecretAccess>();
 				Dictionary<string, KeyVaultSecretData> data = new Dictionary<string, KeyVaultSecretData>();
-				using (var cmd = new NpgsqlCommand("SELECT \"A\".\"Id\", \"A\".\"Name\", \"A\".\"Description\", \"A\".\"CreateDate\", \"A\".\"CreatorUserId\", \"A\".\"LastUpdateDate\", \"A\".\"LastUpdateUserId\" FROM \"Secret\" \"A\" WHERE \"A\".\"Name\" = @name", conn)) {
+				using (var cmd = new NpgsqlCommand("SELECT \"A\".\"Id\", \"A\".\"Name\", \"A\".\"Description\", \"A\".\"CreateDate\", \"A\".\"CreatorUserId\", \"A\".\"LastUpdateDate\", \"A\".\"LastUpdateUserId\" FROM \"Secret\" \"A\" WHERE \"A\".\"Name\" = @name;", conn)) {
 					cmd.Parameters.AddWithValue("@name", name);
 
 					var reader = await cmd.ExecuteReaderAsync().NoSync();
@@ -656,7 +664,7 @@ namespace KeyVault.Data {
 					}
 				}
 
-				using (var cmd = new NpgsqlCommand("SELECT \"A\".\"UserId\", \"A\".\"Read\", \"A\".\"Write\", \"A\".\"Assign\" FROM \"SecretAccess\" \"A\" WHERE \"A\".\"SecretId\" = @secretId", conn)) {
+				using (var cmd = new NpgsqlCommand("SELECT \"A\".\"UserId\", \"A\".\"Read\", \"A\".\"Write\", \"A\".\"Assign\" FROM \"SecretAccess\" \"A\" WHERE \"A\".\"SecretId\" = @secretId ORDER BY \"A\".\"UserId\" ASC;", conn)) {
 					cmd.Parameters.AddWithValue("@secretId", result.Id);
 
 					var reader = await cmd.ExecuteReaderAsync().NoSync();
@@ -668,7 +676,7 @@ namespace KeyVault.Data {
 					}
 				}
 
-				using (var cmd = new NpgsqlCommand("SELECT \"A\".\"Name\", \"A\".\"Description\", \"A\".\"Type\", \"A\".\"CreateDate\", \"A\".\"CreatorUserId\", \"A\".\"LastUpdateDate\", \"A\".\"LastUpdateUserId\" FROM \"SecretData\" \"A\" WHERE \"A\".\"SecretId\" = @secretId", conn)) {
+				using (var cmd = new NpgsqlCommand("SELECT \"A\".\"Name\", \"A\".\"Description\", \"A\".\"Type\", \"A\".\"CreateDate\", \"A\".\"CreatorUserId\", \"A\".\"LastUpdateDate\", \"A\".\"LastUpdateUserId\" FROM \"SecretData\" \"A\" WHERE \"A\".\"SecretId\" = @secretId ORDER BY \"A\".\"Name\" ASC;", conn)) {
 					cmd.Parameters.AddWithValue("@secretId", result.Id);
 
 					var reader = await cmd.ExecuteReaderAsync().NoSync();
@@ -691,7 +699,7 @@ namespace KeyVault.Data {
 				await conn.OpenAsync().NoSync();
 
 				var result = new List<(long secretId, string name, string description, long creatorUserId, DateTime createdDate, long? lastUpdateUserId, DateTime? lastUpdateDate)>();
-				using (var cmd = new NpgsqlCommand("SELECT \"A\".\"Id\", \"A\".\"Name\", \"A\".\"Description\", \"A\".\"CreatorUserId\", \"A\".\"CreateDate\", \"A\".\"LastUpdateUserId\", \"A\".\"LastUpdateDate\" FROM \"Secret\" \"A\";", conn)) {
+				using (var cmd = new NpgsqlCommand("SELECT \"A\".\"Id\", \"A\".\"Name\", \"A\".\"Description\", \"A\".\"CreatorUserId\", \"A\".\"CreateDate\", \"A\".\"LastUpdateUserId\", \"A\".\"LastUpdateDate\" FROM \"Secret\" \"A\" ORDER BY \"A\".\"Id\" ASC;", conn)) {
 					var reader = await cmd.ExecuteReaderAsync().NoSync();
 					await using (reader.NoSync()) {
 						while (await reader.ReadAsync().NoSync()) {
@@ -710,7 +718,7 @@ namespace KeyVault.Data {
 				await conn.OpenAsync().NoSync();
 
 				var result = new List<(long secretId, string name, string description, long creatorUserId, DateTime createdDate, long? lastUpdateUserId, DateTime? lastUpdateDate)>();
-				using (var cmd = new NpgsqlCommand("SELECT \"A\".\"Id\", \"A\".\"Name\", \"A\".\"Description\", \"A\".\"CreatorUserId\", \"A\".\"CreateDate\", \"A\".\"LastUpdateUserId\", \"A\".\"LastUpdateDate\" FROM \"Secret\" \"A\" WHERE \"A\".\"Id\" IN (SELECT DISTINCT \"B\".\"SecretId\" FROM \"SecretAccess\" \"B\" WHERE \"B\".\"UserId\" = @userId AND (\"B\".\"Read\" = 1 OR \"B\".\"Write\" = 1 OR \"B\".\"Assign\" = 1));", conn)) {
+				using (var cmd = new NpgsqlCommand("SELECT \"A\".\"Id\", \"A\".\"Name\", \"A\".\"Description\", \"A\".\"CreatorUserId\", \"A\".\"CreateDate\", \"A\".\"LastUpdateUserId\", \"A\".\"LastUpdateDate\" FROM \"Secret\" \"A\" WHERE \"A\".\"Id\" IN (SELECT DISTINCT \"B\".\"SecretId\" FROM \"SecretAccess\" \"B\" WHERE \"B\".\"UserId\" = @userId AND (\"B\".\"Read\" = true OR \"B\".\"Write\" = true OR \"B\".\"Assign\" = true)) ORDER BY \"A\".\"Id\" ASC;", conn)) {
 					cmd.Parameters.AddWithValue("@userId", userId);
 
 					var reader = await cmd.ExecuteReaderAsync().NoSync();
@@ -746,7 +754,7 @@ namespace KeyVault.Data {
 				await conn.OpenAsync().NoSync();
 
 				var result = new List<(long secretId, string name, string description, long creatorUserId, DateTime createdDate, long? lastUpdateUserId, DateTime? lastUpdateDate)>();
-				using (var cmd = new NpgsqlCommand("SELECT \"A\".\"Id\", \"A\".\"Name\", \"A\".\"Description\", \"A\".\"CreatorUserId\", \"A\".\"CreateDate\", \"A\".\"LastUpdateUserId\", \"A\".\"LastUpdateDate\" FROM \"Secret\" \"A\" LEFT OUTER JOIN \"SecretAccess\" \"B\" ON \"A\".\"Id\" = \"B\".\"SecretId\" WHERE \"B\".\"SecretId\" IS NULL;", conn)) {
+				using (var cmd = new NpgsqlCommand("SELECT \"A\".\"Id\", \"A\".\"Name\", \"A\".\"Description\", \"A\".\"CreatorUserId\", \"A\".\"CreateDate\", \"A\".\"LastUpdateUserId\", \"A\".\"LastUpdateDate\" FROM \"Secret\" \"A\" LEFT OUTER JOIN \"SecretAccess\" \"B\" ON \"A\".\"Id\" = \"B\".\"SecretId\" WHERE \"B\".\"SecretId\" IS NULL ORDER BY \"A\".\"Id\" ASC;", conn)) {
 					var reader = await cmd.ExecuteReaderAsync().NoSync();
 					await using (reader.NoSync()) {
 						while (await reader.ReadAsync().NoSync()) {
