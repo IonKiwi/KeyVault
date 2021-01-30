@@ -13,7 +13,7 @@
 			"key": "MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDBMrfRKMqdHA36DrOIZZXEojQciBY0CJieGTVmGsycvZbpPb07fO53E8jd901Q091WhZANiAAQqTQ7w2DQtlbjYqLoipAm+tmriyjaPbUv/khNwaDCLhsx7QJGUt+UrYlP6l3ovExLaxwG+s7RLkHwAYg++fueMSgR9NpIGNrTobm4ESDz7kS9GDIXXcaxT90GmRUnv00M="
 		},
 		"dataProvider": "Sqlite",
-		"dataProviderConnectionString": "Data Source=C:\\dev\\KeyVault\\data\\KeyVault.db",
+		"dataProviderConnectionString": "Data Source=C:\\dev\\KeyVault\\data\\KeyVault.db"
 		//"dataProvider": "Postgres",
 		//"dataProviderConnectionString": "Server=127.0.0.1;Port=5432;Database=KeyVault;User Id=keyvault_service;Password=ni%45#qd56;"
 		//"dataProvider": "SqlServer",
