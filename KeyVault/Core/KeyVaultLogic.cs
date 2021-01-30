@@ -33,6 +33,9 @@ namespace KeyVault.Core {
 			else if (string.Equals("Postgres", configuration.DataProvider, StringComparison.OrdinalIgnoreCase)) {
 				_data = new PostgresKeyVaultDataProvider(configuration.DataProviderConnectionString);
 			}
+			else if (string.Equals("SqlServer", configuration.DataProvider, StringComparison.OrdinalIgnoreCase)) {
+				_data = new SqlServerKeyVaultDataProvider(configuration.DataProviderConnectionString);
+			}
 			else {
 				throw new InvalidOperationException($"Data provider '{configuration.DataProvider}' is not supported");
 			}

@@ -140,7 +140,7 @@ namespace KeyVault.Data {
 			using (var conn = new SqliteConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();
 
-				using (var cmd = new SqliteCommand("DELETE FROM [User] WHERE [Id] = @userId", conn)) {
+				using (var cmd = new SqliteCommand("DELETE FROM [User] WHERE [Id] = @userId;", conn)) {
 					cmd.Parameters.AddWithValue("@userId", userId);
 					return await cmd.ExecuteNonQueryAsync().NoSync() > 0;
 				}
