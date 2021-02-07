@@ -5,8 +5,15 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace KeyVault.Data {
-	public class AccessData : NewAccessData {
-		[JsonPropertyName("userId")]
-		public long UserId { get; set; }
+
+	public class AccessData {
+		[JsonPropertyName("read")]
+		public bool Read { get; set; }
+
+		[JsonPropertyName("write")]
+		public bool Write { get; set; }
+
+		[JsonPropertyName("assign")]
+		public bool Assign { get; set; }
 	}
 }

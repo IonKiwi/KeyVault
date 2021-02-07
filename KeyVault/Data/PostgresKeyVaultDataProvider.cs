@@ -128,7 +128,7 @@ namespace KeyVault.Data {
 			}
 		}
 
-		public async ValueTask<bool> UpdateUser(long userId, NewUser newUser) {
+		public async ValueTask<bool> UpdateUser(long userId, UpdateUser newUser) {
 			using (var conn = new NpgsqlConnection(_connectionString)) {
 				await conn.OpenAsync().NoSync();
 

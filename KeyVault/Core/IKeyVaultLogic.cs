@@ -15,7 +15,7 @@ namespace KeyVault.Core {
 
 		ValueTask<OperationResult<UserResult>> AddUser(ClaimsPrincipal user, NewUser newUser);
 		ValueTask<OperationResult<UserData>> GetUser(ClaimsPrincipal user, long userId);
-		ValueTask<OperationResult<CompletedResult>> UpdateUser(ClaimsPrincipal user, long userId, NewUser newUser);
+		ValueTask<OperationResult<CompletedResult>> UpdateUser(ClaimsPrincipal user, long userId, UpdateUser newUser);
 		ValueTask<OperationResult<CompletedResult>> DeleteUser(ClaimsPrincipal user, long userId);
 		ValueTask<OperationResult<AllUsersResult>> GetUsers(ClaimsPrincipal user);
 
@@ -48,8 +48,8 @@ namespace KeyVault.Core {
 
 		ValueTask<OperationResult<SecretAccessResult>> GetSecretAccess(ClaimsPrincipal user, string secretName);
 		ValueTask<OperationResult<CompletedResult>> DeleteSecretAccess(ClaimsPrincipal user, string secretName, long userId);
-		ValueTask<OperationResult<CompletedResult>> AddSecretAccess(ClaimsPrincipal user, string secretName, long userId, NewAccessData data);
-		ValueTask<OperationResult<CompletedResult>> AddOrUpdateSecretAccess(ClaimsPrincipal user, string secretName, long userId, NewAccessData data);
+		ValueTask<OperationResult<CompletedResult>> AddSecretAccess(ClaimsPrincipal user, string secretName, long userId, AccessData data);
+		ValueTask<OperationResult<CompletedResult>> AddOrUpdateSecretAccess(ClaimsPrincipal user, string secretName, long userId, AccessData data);
 
 		ValueTask<OperationResult<AllSecretsResult>> GetSecretsWithNoAccess(ClaimsPrincipal user);
 		ValueTask<OperationResult<CompletedResult>> DeleteSecretsWithNoAccess(ClaimsPrincipal user);

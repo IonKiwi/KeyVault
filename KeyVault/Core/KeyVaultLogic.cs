@@ -166,7 +166,7 @@ namespace KeyVault.Core {
 			return new OperationResult<UserData> { Result = new UserData { Name = userInfo.Name, UserId = userInfo.Id } };
 		}
 
-		public async ValueTask<OperationResult<CompletedResult>> UpdateUser(ClaimsPrincipal user, long userId, NewUser newUser) {
+		public async ValueTask<OperationResult<CompletedResult>> UpdateUser(ClaimsPrincipal user, long userId, UpdateUser newUser) {
 
 			if (newUser == null) {
 				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "No data" };
@@ -847,7 +847,7 @@ namespace KeyVault.Core {
 				return new OperationResult<SecretAccessResult> { Status = OperationStatus.Unauthorized };
 			}
 
-			return new OperationResult<SecretAccessResult> { Result = new SecretAccessResult() { Access = secret.Access.Select(a => new AccessData { UserId = a.Key, Read = a.Value.Read, Write = a.Value.Write, Assign = a.Value.Write }).ToList() } };
+			return new OperationResult<SecretAccessResult> { Result = new SecretAccessResult() { Access = secret.Access.Select(a => new UserAccessData { UserId = a.Key, Read = a.Value.Read, Write = a.Value.Write, Assign = a.Value.Write }).ToList() } };
 		}
 
 		public async ValueTask<OperationResult<CompletedResult>> DeleteSecretAccess(ClaimsPrincipal user, string secretName, long userId) {
@@ -872,7 +872,7 @@ namespace KeyVault.Core {
 			return new OperationResult<CompletedResult> { Result = new CompletedResult { Completed = result } };
 		}
 
-		public async ValueTask<OperationResult<CompletedResult>> AddSecretAccess(ClaimsPrincipal user, string secretName, long userId, NewAccessData data) {
+		public async ValueTask<OperationResult<CompletedResult>> AddSecretAccess(ClaimsPrincipal user, string secretName, long userId, AccessData data) {
 
 			if (string.IsNullOrEmpty(secretName)) {
 				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "[SecretName] is required" };
@@ -901,7 +901,7 @@ namespace KeyVault.Core {
 			return new OperationResult<CompletedResult> { Result = new CompletedResult { Completed = result } };
 		}
 
-		public async ValueTask<OperationResult<CompletedResult>> AddOrUpdateSecretAccess(ClaimsPrincipal user, string secretName, long userId, NewAccessData data) {
+		public async ValueTask<OperationResult<CompletedResult>> AddOrUpdateSecretAccess(ClaimsPrincipal user, string secretName, long userId, AccessData data) {
 
 			if (string.IsNullOrEmpty(secretName)) {
 				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "[SecretName] is required" };

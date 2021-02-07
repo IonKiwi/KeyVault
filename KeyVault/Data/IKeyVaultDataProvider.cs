@@ -9,7 +9,7 @@ namespace KeyVault.Data {
 		ValueTask Create();
 
 		ValueTask<long> AddUser(NewUser user);
-		ValueTask<bool> UpdateUser(long userId, NewUser newUser);
+		ValueTask<bool> UpdateUser(long userId, UpdateUser newUser);
 		ValueTask<bool> DeleteUser(long userId);
 		ValueTask<UserInformation> GetUserInformation(long userId);
 		ValueTask<List<UserInformation>> GetUsers();

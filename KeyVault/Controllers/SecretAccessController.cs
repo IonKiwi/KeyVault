@@ -37,14 +37,14 @@ namespace KeyVault.Controllers {
 		}
 
 		[HttpPut("{secretName}/{userId:long}")]
-		public async ValueTask<OperationResult<CompletedResult>> AddOrUpdateSecretAccess([FromServices] IKeyVaultLogic keyVault, string secretName, long userId, [FromBody] NewAccessData data) {
+		public async ValueTask<OperationResult<CompletedResult>> AddOrUpdateSecretAccess([FromServices] IKeyVaultLogic keyVault, string secretName, long userId, [FromBody] AccessData data) {
 			var result = await keyVault.AddOrUpdateSecretAccess(HttpContext.User, secretName, userId, data);
 			SetStatusCode(result);
 			return result;
 		}
 
 		[HttpPost("{secretName}")]
-		public async ValueTask<OperationResult<CompletedResult>> AddAccess([FromServices] IKeyVaultLogic keyVault, string secretName, [FromBody] NewAccess data) {
+		public async ValueTask<OperationResult<CompletedResult>> AddAccess([FromServices] IKeyVaultLogic keyVault, string secretName, [FromBody] UserAccessData data) {
 			var result = await keyVault.AddSecretAccess(HttpContext.User, secretName, data.UserId, data);
 			SetStatusCode(result);
 			return result;

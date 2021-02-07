@@ -31,15 +31,15 @@ namespace KeyVault.Controllers {
 		}
 
 		[HttpPost]
-		public async ValueTask<OperationResult<UserResult>> Create([FromServices] IKeyVaultLogic keyVault, [FromBody] NewUser newUser) {
-			var result = await keyVault.AddUser(HttpContext.User, newUser);
+		public async ValueTask<OperationResult<UserResult>> Create([FromServices] IKeyVaultLogic keyVault, [FromBody] NewUser data) {
+			var result = await keyVault.AddUser(HttpContext.User, data);
 			SetStatusCode(result);
 			return result;
 		}
 
 		[HttpPut("{userId:long}")]
-		public async ValueTask<OperationResult<CompletedResult>> Update([FromServices] IKeyVaultLogic keyVault, long userId, [FromBody] NewUser newUser) {
-			var result = await keyVault.UpdateUser(HttpContext.User, userId, newUser);
+		public async ValueTask<OperationResult<CompletedResult>> Update([FromServices] IKeyVaultLogic keyVault, long userId, [FromBody] UpdateUser data) {
+			var result = await keyVault.UpdateUser(HttpContext.User, userId, data);
 			SetStatusCode(result);
 			return result;
 		}

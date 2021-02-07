@@ -5,8 +5,8 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace KeyVault.Data {
-	public class SecretAccessResult {
-		[JsonPropertyName("access")]
-		public List<UserAccessData> Access { get; set; }
+	public class UserAccessData : AccessData {
+		[JsonPropertyName("userId")]
+		public long UserId { get; set; }
 	}
 }
