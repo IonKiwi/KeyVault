@@ -36,20 +36,20 @@ namespace KeyVault.Controllers {
 		public async ValueTask<IActionResult> GetDefault([FromServices] IKeyVaultLogic keyVault, string secretName, KeyVaultSecretValueMode mode) {
 			if (mode == KeyVaultSecretValueMode.Text) {
 				var secret = await keyVault.GetSecretValue(HttpContext.User, secretName, null);
-				if (secret.NotFound) {
+				if (secret.Status == OperationStatus.NotFound) {
 					return NotFound();
 				}
-				else if (secret.Unauthorized) {
+				else if (secret.Status == OperationStatus.Unauthorized) {
 					return Unauthorized();
 				}
 				return new ObjectResult(secret.Result);
 			}
 			else if (mode == KeyVaultSecretValueMode.Binary) {
 				var secret = await keyVault.GetSecretValueAsBinrary(HttpContext.User, secretName, null);
-				if (secret.NotFound) {
+				if (secret.Status == OperationStatus.NotFound) {
 					return NotFound();
 				}
-				else if (secret.Unauthorized) {
+				else if (secret.Status == OperationStatus.Unauthorized) {
 					return Unauthorized();
 				}
 				if (secret.Result.type == KeyVaultSecretType.Text) {
@@ -67,20 +67,20 @@ namespace KeyVault.Controllers {
 		public async ValueTask<IActionResult> Get([FromServices] IKeyVaultLogic keyVault, string secretName, string name, KeyVaultSecretValueMode mode) {
 			if (mode == KeyVaultSecretValueMode.Text) {
 				var secret = await keyVault.GetSecretValue(HttpContext.User, secretName, name);
-				if (secret.NotFound) {
+				if (secret.Status == OperationStatus.NotFound) {
 					return NotFound();
 				}
-				else if (secret.Unauthorized) {
+				else if (secret.Status == OperationStatus.Unauthorized) {
 					return Unauthorized();
 				}
 				return new ObjectResult(secret.Result);
 			}
 			else if (mode == KeyVaultSecretValueMode.Binary) {
 				var secret = await keyVault.GetSecretValueAsBinrary(HttpContext.User, secretName, name);
-				if (secret.NotFound) {
+				if (secret.Status == OperationStatus.NotFound) {
 					return NotFound();
 				}
-				else if (secret.Unauthorized) {
+				else if (secret.Status == OperationStatus.Unauthorized) {
 					return Unauthorized();
 				}
 				if (secret.Result.type == KeyVaultSecretType.Text) {

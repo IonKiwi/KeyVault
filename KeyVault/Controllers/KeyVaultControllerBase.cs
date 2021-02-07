@@ -9,19 +9,19 @@ namespace KeyVault.Controllers {
 	public class KeyVaultControllerBase : ControllerBase {
 
 		protected void SetStatusCode<T>(OperationResult<T> result) {
-			if (result.Conflict) {
+			if (result.Status == OperationStatus.Conflict) {
 				HttpContext.Response.StatusCode = 409;
 			}
-			else if (result.NotFound) {
+			else if (result.Status == OperationStatus.NotFound) {
 				HttpContext.Response.StatusCode = 404;
 			}
-			else if (result.Unauthorized) {
+			else if (result.Status == OperationStatus.Unauthorized) {
 				HttpContext.Response.StatusCode = 401;
 			}
-			else if (result.ValidationFailed) {
+			else if (result.Status == OperationStatus.ValidationError) {
 				HttpContext.Response.StatusCode = 400;
 			}
-			else if (result.Created) {
+			else if (result.Status == OperationStatus.Created) {
 				HttpContext.Response.StatusCode = 201;
 			}
 		}

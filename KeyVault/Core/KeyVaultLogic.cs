@@ -139,28 +139,28 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<UserResult>> AddUser(ClaimsPrincipal user, NewUser newUser) {
 
 			if (newUser == null) {
-				return new OperationResult<UserResult> { ValidationFailed = true, ValidationMessage = "No data" };
+				return new OperationResult<UserResult> { Status = OperationStatus.ValidationError, Message = "No data" };
 			}
 			else if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
-				return new OperationResult<UserResult> { Unauthorized = true };
+				return new OperationResult<UserResult> { Status = OperationStatus.Unauthorized };
 			}
 			else if (string.IsNullOrEmpty(newUser.Name)) {
-				return new OperationResult<UserResult> { ValidationFailed = true, ValidationMessage = "[Name] is required" };
+				return new OperationResult<UserResult> { Status = OperationStatus.ValidationError, Message = "[Name] is required" };
 			}
 
 			var userId = await _data.AddUser(newUser).NoSync();
-			return new OperationResult<UserResult> { Created = true, Result = new UserResult { UserId = userId } };
+			return new OperationResult<UserResult> { Status = OperationStatus.Created, Result = new UserResult { UserId = userId } };
 		}
 
 		public async ValueTask<OperationResult<UserData>> GetUser(ClaimsPrincipal user, long userId) {
 
 			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
-				return new OperationResult<UserData> { Unauthorized = true };
+				return new OperationResult<UserData> { Status = OperationStatus.Unauthorized };
 			}
 
 			var userInfo = await _data.GetUserInformation(userId).NoSync();
 			if (userInfo == null) {
-				return new OperationResult<UserData> { NotFound = true };
+				return new OperationResult<UserData> { Status = OperationStatus.NotFound };
 			}
 
 			return new OperationResult<UserData> { Result = new UserData { Name = userInfo.Name, UserId = userInfo.Id } };
@@ -169,13 +169,13 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<CompletedResult>> UpdateUser(ClaimsPrincipal user, long userId, NewUser newUser) {
 
 			if (newUser == null) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "No data" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "No data" };
 			}
 			else if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
-				return new OperationResult<CompletedResult> { Unauthorized = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.Unauthorized };
 			}
 			else if (string.IsNullOrEmpty(newUser.Name)) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "[Name] is required" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "[Name] is required" };
 			}
 
 			var result = await _data.UpdateUser(userId, newUser).NoSync();
@@ -185,7 +185,7 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<CompletedResult>> DeleteUser(ClaimsPrincipal user, long userId) {
 
 			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
-				return new OperationResult<CompletedResult> { Unauthorized = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var result = await _data.DeleteUser(userId).NoSync();
@@ -195,7 +195,7 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<AllUsersResult>> GetUsers(ClaimsPrincipal user) {
 
 			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
-				return new OperationResult<AllUsersResult> { Unauthorized = true };
+				return new OperationResult<AllUsersResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var users = await _data.GetUsers().NoSync();
@@ -207,12 +207,12 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<UserRolesResult>> GetUserRoles(ClaimsPrincipal user, long userId) {
 
 			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
-				return new OperationResult<UserRolesResult> { Unauthorized = true };
+				return new OperationResult<UserRolesResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var userInfo = await _data.GetUserInformation(userId).NoSync();
 			if (userInfo == null) {
-				return new OperationResult<UserRolesResult> { NotFound = true };
+				return new OperationResult<UserRolesResult> { Status = OperationStatus.NotFound };
 			}
 
 			return new OperationResult<UserRolesResult> { Result = new UserRolesResult { Roles = userInfo.Roles.ToArray() } };
@@ -221,19 +221,19 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<UserRolesResult>> MergeUserRoles(ClaimsPrincipal user, long userId, string[] roles) {
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || user.IsInRole(KeyVaultRoles.UserManagement))) {
-				return new OperationResult<UserRolesResult> { Unauthorized = true };
+				return new OperationResult<UserRolesResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var userInfo = await _data.GetUserInformation(userId).NoSync();
 			if (userInfo == null) {
-				return new OperationResult<UserRolesResult> { NotFound = true };
+				return new OperationResult<UserRolesResult> { Status = OperationStatus.NotFound };
 			}
 
 			HashSet<string> toAdd = new HashSet<string>();
 			foreach (var role in roles) {
 				// only roles that the current user has
 				if (!isAdmin && !user.IsInRole(role)) {
-					return new OperationResult<UserRolesResult> { Unauthorized = true };
+					return new OperationResult<UserRolesResult> { Status = OperationStatus.Unauthorized };
 				}
 				if (!userInfo.Roles.Contains(role)) {
 					toAdd.Add(role);
@@ -253,18 +253,18 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<UserRolesResult>> ReplaceUserRoles(ClaimsPrincipal user, long userId, string[] roles) {
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || user.IsInRole(KeyVaultRoles.UserManagement))) {
-				return new OperationResult<UserRolesResult> { Unauthorized = true };
+				return new OperationResult<UserRolesResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var userInfo = await _data.GetUserInformation(userId).NoSync();
 			if (userInfo == null) {
-				return new OperationResult<UserRolesResult> { NotFound = true };
+				return new OperationResult<UserRolesResult> { Status = OperationStatus.NotFound };
 			}
 
 			foreach (var role in roles) {
 				// only roles that the current user has
 				if (!isAdmin && !user.IsInRole(role)) {
-					return new OperationResult<UserRolesResult> { Unauthorized = true };
+					return new OperationResult<UserRolesResult> { Status = OperationStatus.Unauthorized };
 				}
 			}
 
@@ -276,12 +276,12 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<UserRolesResult>> DeleteUserRoles(ClaimsPrincipal user, long userId, string[] roles) {
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || user.IsInRole(KeyVaultRoles.UserManagement))) {
-				return new OperationResult<UserRolesResult> { Unauthorized = true };
+				return new OperationResult<UserRolesResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var userInfo = await _data.GetUserInformation(userId).NoSync();
 			if (userInfo == null) {
-				return new OperationResult<UserRolesResult> { NotFound = true };
+				return new OperationResult<UserRolesResult> { Status = OperationStatus.NotFound };
 			}
 
 			HashSet<string> toRemove = new HashSet<string>();
@@ -290,7 +290,7 @@ namespace KeyVault.Core {
 				if (hasRole) {
 					// only roles that the current user has
 					if (!isAdmin && !user.IsInRole(role)) {
-						return new OperationResult<UserRolesResult> { Unauthorized = true };
+						return new OperationResult<UserRolesResult> { Status = OperationStatus.Unauthorized };
 					}
 					toRemove.Add(role);
 				}
@@ -314,12 +314,12 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<UserCredentialsResult>> GetCredentials(ClaimsPrincipal user, long userId) {
 
 			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
-				return new OperationResult<UserCredentialsResult> { Unauthorized = true };
+				return new OperationResult<UserCredentialsResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var userInfo = await _data.GetUserInformation(userId).NoSync();
 			if (userInfo == null) {
-				return new OperationResult<UserCredentialsResult> { NotFound = true };
+				return new OperationResult<UserCredentialsResult> { Status = OperationStatus.NotFound };
 			}
 
 			var credentials = await _data.GetUserCredentials(userId).NoSync();
@@ -329,18 +329,18 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<CompletedResult>> DeleteCredential(ClaimsPrincipal user, long userId, long credentialId) {
 
 			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
-				return new OperationResult<CompletedResult> { Unauthorized = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var userInfo = await _data.GetUserInformation(userId).NoSync();
 			if (userInfo == null) {
-				return new OperationResult<CompletedResult> { NotFound = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.NotFound };
 			}
 
 			var credentials = await _data.GetUserCredentials(userId).NoSync();
 			var index = credentials.FirstIndexOrNull(z => z.credentialId == credentialId);
 			if (!index.HasValue) {
-				return new OperationResult<CompletedResult> { NotFound = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.NotFound };
 			}
 
 			var result = await _data.DeleteCredential(credentialId).NoSync();
@@ -349,38 +349,38 @@ namespace KeyVault.Core {
 
 		public async ValueTask<OperationResult<CredentialResult>> AddWindowsCredential(ClaimsPrincipal user, long userId, string account) {
 			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
-				return new OperationResult<CredentialResult> { Unauthorized = true };
+				return new OperationResult<CredentialResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var userInfo = await _data.GetUserInformation(userId).NoSync();
 			if (userInfo == null) {
-				return new OperationResult<CredentialResult> { NotFound = true };
+				return new OperationResult<CredentialResult> { Status = OperationStatus.NotFound };
 			}
 
 			var credentials = await _data.GetUserCredentials(userId).NoSync();
 			var index = credentials.FirstIndexOrNull(z => z.type == KeyVaultCredentialType.Windows && string.Equals(z.identifier, account, StringComparison.OrdinalIgnoreCase));
 			if (index.HasValue) {
-				return new OperationResult<CredentialResult> { Conflict = true };
+				return new OperationResult<CredentialResult> { Status = OperationStatus.Conflict };
 			}
 
 			var result = await _data.AddCredential(userId, KeyVaultCredentialType.Windows, account, null).NoSync();
-			return new OperationResult<CredentialResult> { Created = true, Result = new CredentialResult { CredentialId = result } };
+			return new OperationResult<CredentialResult> { Status = OperationStatus.Created, Result = new CredentialResult { CredentialId = result } };
 		}
 
 		public async ValueTask<OperationResult<CredentialResult>> AddBasicCredential(ClaimsPrincipal user, long userId, string username, string password) {
 			if (!(user.IsInRole(KeyVaultRoles.UserManagement) || user.IsInRole(KeyVaultRoles.Admin))) {
-				return new OperationResult<CredentialResult> { Unauthorized = true };
+				return new OperationResult<CredentialResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var userInfo = await _data.GetUserInformation(userId).NoSync();
 			if (userInfo == null) {
-				return new OperationResult<CredentialResult> { NotFound = true };
+				return new OperationResult<CredentialResult> { Status = OperationStatus.NotFound };
 			}
 
 			var credentials = await _data.GetUserCredentials(userId).NoSync();
 			var index = credentials.FirstIndexOrNull(z => z.type == KeyVaultCredentialType.Basic && string.Equals(z.identifier, username, StringComparison.OrdinalIgnoreCase));
 			if (index.HasValue) {
-				return new OperationResult<CredentialResult> { Conflict = true };
+				return new OperationResult<CredentialResult> { Status = OperationStatus.Conflict };
 			}
 
 			byte[] iv, data;
@@ -400,7 +400,7 @@ namespace KeyVault.Core {
 			};
 
 			var result = await _data.AddCredential(userId, KeyVaultCredentialType.Basic, username, JsonSerializer.Serialize(credential)).NoSync();
-			return new OperationResult<CredentialResult> { Created = true, Result = new CredentialResult { CredentialId = result } };
+			return new OperationResult<CredentialResult> { Status = OperationStatus.Created, Result = new CredentialResult { CredentialId = result } };
 		}
 
 
@@ -409,23 +409,23 @@ namespace KeyVault.Core {
 
 			var secret = await _data.GetSecret(secretName).NoSync();
 			if (secret == null) {
-				return new OperationResult<string> { NotFound = true };
+				return new OperationResult<string> { Status = OperationStatus.NotFound };
 			}
 
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			var isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || (secret.Access.TryGetValue(userId, out var access) && access.Read))) {
-				return new OperationResult<string> { Unauthorized = true };
+				return new OperationResult<string> { Status = OperationStatus.Unauthorized };
 			}
 
 			if (!secret.Data.ContainsKey(name ?? string.Empty)) {
-				return new OperationResult<string> { NotFound = true };
+				return new OperationResult<string> { Status = OperationStatus.NotFound };
 			}
 
 			var secretData = await _data.GetSecretData(secret.Id, name).NoSync();
 			if (!secretData.HasValue) {
 				// should never get here
-				return new OperationResult<string> { NotFound = true };
+				return new OperationResult<string> { Status = OperationStatus.NotFound };
 			}
 
 			byte[] plainData;
@@ -459,23 +459,23 @@ namespace KeyVault.Core {
 
 			var secret = await _data.GetSecret(secretName).NoSync();
 			if (secret == null) {
-				return new OperationResult<(byte[] data, KeyVaultSecretType type)> { NotFound = true };
+				return new OperationResult<(byte[] data, KeyVaultSecretType type)> { Status = OperationStatus.NotFound };
 			}
 
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			var isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || (secret.Access.TryGetValue(userId, out var access) && access.Read))) {
-				return new OperationResult<(byte[] data, KeyVaultSecretType type)> { Unauthorized = true };
+				return new OperationResult<(byte[] data, KeyVaultSecretType type)> { Status = OperationStatus.Unauthorized };
 			}
 
 			if (!secret.Data.ContainsKey(name ?? string.Empty)) {
-				return new OperationResult<(byte[] data, KeyVaultSecretType type)> { NotFound = true };
+				return new OperationResult<(byte[] data, KeyVaultSecretType type)> { Status = OperationStatus.NotFound };
 			}
 
 			var secretData = await _data.GetSecretData(secret.Id, name).NoSync();
 			if (!secretData.HasValue) {
 				// should never get here
-				return new OperationResult<(byte[] data, KeyVaultSecretType type)> { NotFound = true };
+				return new OperationResult<(byte[] data, KeyVaultSecretType type)> { Status = OperationStatus.NotFound };
 			}
 
 			byte[] plainData;
@@ -501,59 +501,59 @@ namespace KeyVault.Core {
 			if (isAdmin) {
 				var secret = await _data.GetSecret(secretName).NoSync();
 				if (secret == null) {
-					return new OperationResult<SecretItem> { NotFound = true };
+					return new OperationResult<SecretItem> { Status = OperationStatus.NotFound };
 				}
 				return new OperationResult<SecretItem> { Result = new SecretItem { SecretId = secret.Id, Name = secret.Name, Description = secret.Description } };
 			}
 			else if (user.IsInRole(KeyVaultRoles.ListSecrets)) {
 				var secret = await _data.GetSecret(secretName).NoSync();
 				if (secret == null) {
-					return new OperationResult<SecretItem> { NotFound = true };
+					return new OperationResult<SecretItem> { Status = OperationStatus.NotFound };
 				}
 				var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 				if (!(secret.Access.TryGetValue(userId, out var access) && (access.Read || access.Write || access.Assign))) {
-					return new OperationResult<SecretItem> { Unauthorized = true };
+					return new OperationResult<SecretItem> { Status = OperationStatus.Unauthorized };
 				}
 				return new OperationResult<SecretItem> { Result = new SecretItem { SecretId = secret.Id, Name = secret.Name, Description = secret.Description } };
 			}
 			else {
-				return new OperationResult<SecretItem> { Unauthorized = true };
+				return new OperationResult<SecretItem> { Status = OperationStatus.Unauthorized };
 			}
 		}
 
 		public async ValueTask<OperationResult<SecretResult>> NewSecret(ClaimsPrincipal user, NewSecret newSecret) {
 
 			if (newSecret == null) {
-				return new OperationResult<SecretResult> { ValidationFailed = true, ValidationMessage = "No data" };
+				return new OperationResult<SecretResult> { Status = OperationStatus.ValidationError, Message = "No data" };
 			}
 			else if (!(user.IsInRole(KeyVaultRoles.CreateSecret) || user.IsInRole(KeyVaultRoles.Admin))) {
-				return new OperationResult<SecretResult> { Unauthorized = true };
+				return new OperationResult<SecretResult> { Status = OperationStatus.Unauthorized };
 			}
 			else if (string.IsNullOrEmpty(newSecret.Name)) {
-				return new OperationResult<SecretResult> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
+				return new OperationResult<SecretResult> { Status = OperationStatus.ValidationError, Message = "[SecretName] is required" };
 			}
 
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			long secretId = await _data.CreateSecret(userId, newSecret.Name, newSecret.Description).NoSync();
-			return new OperationResult<SecretResult> { Created = true, Result = new SecretResult { SecretId = secretId } };
+			return new OperationResult<SecretResult> { Status = OperationStatus.Created, Result = new SecretResult { SecretId = secretId } };
 		}
 
 		public async ValueTask<OperationResult<SecretResult>> UpdateSecretDescription(ClaimsPrincipal user, string secretName, UpdateSecretDescription data) {
 
 			if (data == null) {
-				return new OperationResult<SecretResult> { ValidationFailed = true, ValidationMessage = "No data" };
+				return new OperationResult<SecretResult> { Status = OperationStatus.ValidationError, Message = "No data" };
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();
 			if (secret == null) {
-				return new OperationResult<SecretResult> { NotFound = true };
+				return new OperationResult<SecretResult> { Status = OperationStatus.NotFound };
 			}
 
 			// check access
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || (secret.Access.TryGetValue(userId, out var access) && access.Write))) {
-				return new OperationResult<SecretResult> { Unauthorized = true };
+				return new OperationResult<SecretResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			long secretId = await _data.UpdateSecretDescription(userId, secretName, data.Description);
@@ -563,19 +563,19 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<CompletedResult>> DeleteSecret(ClaimsPrincipal user, string secretName) {
 
 			if (string.IsNullOrEmpty(secretName)) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "[SecretName] is required" };
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();
 			if (secret == null) {
-				return new OperationResult<CompletedResult> { NotFound = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.NotFound };
 			}
 
 			// check access
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || (secret.Access.TryGetValue(userId, out var access) && access.Write))) {
-				return new OperationResult<CompletedResult> { Unauthorized = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var result = await _data.DeleteSecret(userId, secretName).NoSync();
@@ -594,7 +594,7 @@ namespace KeyVault.Core {
 				return new OperationResult<AllSecretsResult> { Result = new AllSecretsResult { Secrets = result.Select(z => new SecretItem { SecretId = z.secretId, Name = z.name, Description = z.description }).ToList() } };
 			}
 			else {
-				return new OperationResult<AllSecretsResult> { Unauthorized = true };
+				return new OperationResult<AllSecretsResult> { Status = OperationStatus.Unauthorized };
 			}
 		}
 
@@ -603,19 +603,19 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<CompletedResult>> NewSecretData(ClaimsPrincipal user, string secretName, NewSecretData data) {
 
 			if (data == null) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "No data" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "No data" };
 			}
 			else if (string.IsNullOrEmpty(secretName)) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "[SecretName] is required" };
 			}
 			else if (!(user.IsInRole(KeyVaultRoles.CreateSecret) || user.IsInRole(KeyVaultRoles.Admin))) {
-				return new OperationResult<CompletedResult> { Unauthorized = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.Unauthorized };
 			}
 			else if (string.IsNullOrEmpty(data.Value)) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "[Value] is required" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "[Value] is required" };
 			}
 			else if (!data.SecretType.HasValue) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "[SecretType] is required" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "[SecretType] is required" };
 			}
 
 			byte[] plainData;
@@ -627,7 +627,7 @@ namespace KeyVault.Core {
 					plainData = Convert.FromBase64String(data.Value);
 				}
 				catch (Exception ex) {
-					return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "Invalid [Value] for specified [SecretType]" };
+					return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "Invalid [Value] for specified [SecretType]" };
 				}
 			}
 			else {
@@ -636,11 +636,11 @@ namespace KeyVault.Core {
 
 			var secret = await _data.GetSecret(secretName).NoSync();
 			if (secret == null) {
-				return new OperationResult<CompletedResult> { NotFound = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.NotFound };
 			}
 
 			if (secret.Data.ContainsKey(data.Name ?? string.Empty)) {
-				return new OperationResult<CompletedResult> { Conflict = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.Conflict };
 			}
 
 			byte[] secretData;
@@ -657,32 +657,32 @@ namespace KeyVault.Core {
 
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			var result = await _data.AddSecretData(userId, secret.Id, data.Name, data.Description, data.SecretType.Value, secretData, iv).NoSync();
-			return new OperationResult<CompletedResult> { Created = true, Result = new CompletedResult { Completed = result } };
+			return new OperationResult<CompletedResult> { Status = OperationStatus.Created, Result = new CompletedResult { Completed = result } };
 		}
 
 		public async ValueTask<OperationResult<CompletedResult>> UpdateSecretDataDescription(ClaimsPrincipal user, string secretName, string name, UpdateSecretDataDescription data) {
 
 			if (data == null) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "No data" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "No data" };
 			}
 			else if (string.IsNullOrEmpty(secretName)) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "[SecretName] is required" };
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();
 			if (secret == null) {
-				return new OperationResult<CompletedResult> { NotFound = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.NotFound };
 			}
 
 			if (!secret.Data.ContainsKey(name ?? string.Empty)) {
-				return new OperationResult<CompletedResult> { NotFound = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.NotFound };
 			}
 
 			// check access
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || (secret.Access.TryGetValue(userId, out var access) && access.Write))) {
-				return new OperationResult<CompletedResult> { Unauthorized = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var result = await _data.UpdateSecretDataDescription(userId, secret.Id, name, data.Description).NoSync();
@@ -692,16 +692,16 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<CompletedResult>> UpdateSecretData(ClaimsPrincipal user, string secretName, string name, UpdateSecretData data) {
 
 			if (data == null) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "No data" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "No data" };
 			}
 			else if (string.IsNullOrEmpty(secretName)) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "[SecretName] is required" };
 			}
 			else if (!data.SecretType.HasValue) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "[SecretType] is required" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "[SecretType] is required" };
 			}
 			else if (string.IsNullOrEmpty(data.Value)) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "[Value] is required" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "[Value] is required" };
 			}
 
 			byte[] plainData;
@@ -713,7 +713,7 @@ namespace KeyVault.Core {
 					plainData = Convert.FromBase64String(data.Value);
 				}
 				catch (Exception ex) {
-					return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "Invalid [Value] for specified [SecretType]" };
+					return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "Invalid [Value] for specified [SecretType]" };
 				}
 			}
 			else {
@@ -722,18 +722,18 @@ namespace KeyVault.Core {
 
 			var secret = await _data.GetSecret(secretName).NoSync();
 			if (secret == null) {
-				return new OperationResult<CompletedResult> { NotFound = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.NotFound };
 			}
 
 			if (!secret.Data.ContainsKey(name ?? string.Empty)) {
-				return new OperationResult<CompletedResult> { NotFound = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.NotFound };
 			}
 
 			// check access
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || (secret.Access.TryGetValue(userId, out var access) && access.Write))) {
-				return new OperationResult<CompletedResult> { Unauthorized = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			byte[] secretData;
@@ -756,23 +756,23 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<CompletedResult>> DeleteSecretData(ClaimsPrincipal user, string secretName, string name) {
 
 			if (string.IsNullOrEmpty(secretName)) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "[SecretName] is required" };
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();
 			if (secret == null) {
-				return new OperationResult<CompletedResult> { NotFound = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.NotFound };
 			}
 
 			if (!secret.Data.ContainsKey(name ?? string.Empty)) {
-				return new OperationResult<CompletedResult> { NotFound = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.NotFound };
 			}
 
 			// check access
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || (secret.Access.TryGetValue(userId, out var access) && access.Write))) {
-				return new OperationResult<CompletedResult> { Unauthorized = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var result = await _data.DeleteSecretData(userId, secret.Id, name).NoSync();
@@ -782,22 +782,22 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<SecretDataItem>> GetSecretData(ClaimsPrincipal user, string secretName, string name) {
 
 			if (string.IsNullOrEmpty(secretName)) {
-				return new OperationResult<SecretDataItem> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
+				return new OperationResult<SecretDataItem> { Status = OperationStatus.ValidationError, Message = "[SecretName] is required" };
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();
 			if (secret == null) {
-				return new OperationResult<SecretDataItem> { NotFound = true };
+				return new OperationResult<SecretDataItem> { Status = OperationStatus.NotFound };
 			}
 			if (!secret.Data.TryGetValue(name ?? string.Empty, out var data)) {
-				return new OperationResult<SecretDataItem> { NotFound = true };
+				return new OperationResult<SecretDataItem> { Status = OperationStatus.NotFound };
 			}
 
 			// check access
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || (user.IsInRole(KeyVaultRoles.ListSecrets) && secret.Access.TryGetValue(userId, out var access) && (access.Read || access.Write || access.Assign)))) {
-				return new OperationResult<SecretDataItem> { Unauthorized = true };
+				return new OperationResult<SecretDataItem> { Status = OperationStatus.Unauthorized };
 			}
 
 			var result = await _data.GetSecretData(secret.Id).NoSync();
@@ -808,19 +808,19 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<AllSecretData>> GetSecretDataForSecret(ClaimsPrincipal user, string secretName) {
 
 			if (string.IsNullOrEmpty(secretName)) {
-				return new OperationResult<AllSecretData> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
+				return new OperationResult<AllSecretData> { Status = OperationStatus.ValidationError, Message = "[SecretName] is required" };
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();
 			if (secret == null) {
-				return new OperationResult<AllSecretData> { NotFound = true };
+				return new OperationResult<AllSecretData> { Status = OperationStatus.NotFound };
 			}
 
 			// check access
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || (user.IsInRole(KeyVaultRoles.ListSecrets) && secret.Access.TryGetValue(userId, out var access) && (access.Read || access.Write || access.Assign)))) {
-				return new OperationResult<AllSecretData> { Unauthorized = true };
+				return new OperationResult<AllSecretData> { Status = OperationStatus.Unauthorized };
 			}
 
 			var result = await _data.GetSecretData(secret.Id).NoSync();
@@ -832,19 +832,19 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<SecretAccessResult>> GetSecretAccess(ClaimsPrincipal user, string secretName) {
 
 			if (string.IsNullOrEmpty(secretName)) {
-				return new OperationResult<SecretAccessResult> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
+				return new OperationResult<SecretAccessResult> { Status = OperationStatus.ValidationError, Message = "[SecretName] is required" };
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();
 			if (secret == null) {
-				return new OperationResult<SecretAccessResult> { NotFound = true };
+				return new OperationResult<SecretAccessResult> { Status = OperationStatus.NotFound };
 			}
 
 			// check access
 			var userId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || (secret.Access.TryGetValue(userId, out var access) && access.Assign))) {
-				return new OperationResult<SecretAccessResult> { Unauthorized = true };
+				return new OperationResult<SecretAccessResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			return new OperationResult<SecretAccessResult> { Result = new SecretAccessResult() { Access = secret.Access.Select(a => new AccessData { UserId = a.Key, Read = a.Value.Read, Write = a.Value.Write, Assign = a.Value.Write }).ToList() } };
@@ -853,19 +853,19 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<CompletedResult>> DeleteSecretAccess(ClaimsPrincipal user, string secretName, long userId) {
 
 			if (string.IsNullOrEmpty(secretName)) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "[SecretName] is required" };
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();
 			if (secret == null) {
-				return new OperationResult<CompletedResult> { NotFound = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.NotFound };
 			}
 
 			// check access
 			var currentUserId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || (secret.Access.TryGetValue(currentUserId, out var access) && access.Assign))) {
-				return new OperationResult<CompletedResult> { Unauthorized = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var result = await _data.DeleteSecretAccess(secret.Id, userId).NoSync();
@@ -875,26 +875,26 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<CompletedResult>> AddSecretAccess(ClaimsPrincipal user, string secretName, long userId, NewAccessData data) {
 
 			if (string.IsNullOrEmpty(secretName)) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "[SecretName] is required" };
 			}
 			else if (!data.Read && !data.Write && !data.Assign) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "Specify [Read] and/or [Write] and/or [Assign] access for [SecretName] or delete the access" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "Specify [Read] and/or [Write] and/or [Assign] access for [SecretName] or delete the access" };
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();
 			if (secret == null) {
-				return new OperationResult<CompletedResult> { NotFound = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.NotFound };
 			}
 
 			// check access
 			var currentUserId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || (secret.Access.TryGetValue(currentUserId, out var access) && access.Assign))) {
-				return new OperationResult<CompletedResult> { Unauthorized = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			if (secret.Access.ContainsKey(userId)) {
-				return new OperationResult<CompletedResult> { Conflict = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.Conflict };
 			}
 
 			var result = await _data.AddSecretAccess(secret.Id, userId, data.Read, data.Write, data.Assign).NoSync();
@@ -904,22 +904,22 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<CompletedResult>> AddOrUpdateSecretAccess(ClaimsPrincipal user, string secretName, long userId, NewAccessData data) {
 
 			if (string.IsNullOrEmpty(secretName)) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "[SecretName] is required" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "[SecretName] is required" };
 			}
 			else if (!data.Read && !data.Write && !data.Assign) {
-				return new OperationResult<CompletedResult> { ValidationFailed = true, ValidationMessage = "Specify [Read] and/or [Write] and/or [Assign] access for [SecretName] or delete the access" };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.ValidationError, Message = "Specify [Read] and/or [Write] and/or [Assign] access for [SecretName] or delete the access" };
 			}
 
 			var secret = await _data.GetSecret(secretName).NoSync();
 			if (secret == null) {
-				return new OperationResult<CompletedResult> { NotFound = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.NotFound };
 			}
 
 			// check access
 			var currentUserId = long.Parse(user.Claims.Single(z => z.Type == KeyVaultClaims.UserId).Value, NumberStyles.None, CultureInfo.InvariantCulture);
 			bool isAdmin = user.IsInRole(KeyVaultRoles.Admin);
 			if (!(isAdmin || (secret.Access.TryGetValue(currentUserId, out var access) && access.Assign))) {
-				return new OperationResult<CompletedResult> { Unauthorized = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var result = await _data.AddOrUpdateSecretAccess(secret.Id, userId, data.Read, data.Write, data.Assign).NoSync();
@@ -931,7 +931,7 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<AllSecretsResult>> GetSecretsWithNoAccess(ClaimsPrincipal user) {
 
 			if (!user.IsInRole(KeyVaultRoles.Admin)) {
-				return new OperationResult<AllSecretsResult> { Unauthorized = true };
+				return new OperationResult<AllSecretsResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var result = await _data.GetSecretsWithNoAccess().NoSync();
@@ -941,7 +941,7 @@ namespace KeyVault.Core {
 		public async ValueTask<OperationResult<CompletedResult>> DeleteSecretsWithNoAccess(ClaimsPrincipal user) {
 
 			if (!user.IsInRole(KeyVaultRoles.Admin)) {
-				return new OperationResult<CompletedResult> { Unauthorized = true };
+				return new OperationResult<CompletedResult> { Status = OperationStatus.Unauthorized };
 			}
 
 			var result = await _data.DeleteSecretsWithNoAccess().NoSync();
